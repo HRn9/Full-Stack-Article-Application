@@ -1,0 +1,268 @@
+/* === App Layout === */
+.app {
+  max-width: 900px;
+  margin: 40px auto;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-height: 80vh;
+}
+
+.app-header {
+  padding: 20px 24px;
+  border-bottom: 1px solid #eee;
+  background: #fafafa;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.app-header h1 {
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.nav {
+  display: flex;
+  gap: 8px;
+}
+
+.nav-btn {
+  padding: 8px 14px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: #f0f0f0;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.nav-btn:hover {
+  background: #e4e4e4;
+}
+
+.nav-btn.active {
+  background: #007bff;
+  color: #fff;
+  border-color: #007bff;
+}
+
+.app-main {
+  padding: 24px;
+  flex: 1;
+}
+
+/* === Common Elements === */
+.loading,
+.empty-state {
+  text-align: center;
+  padding: 40px;
+  color: #777;
+}
+
+.error-banner {
+  background: #ffeaea;
+  color: #b10000;
+  padding: 12px 16px;
+  border-radius: 6px;
+  margin-bottom: 16px;
+  font-size: 14px;
+}
+
+/* === Buttons === */
+button {
+  font: inherit;
+  cursor: pointer;
+}
+
+.btn-primary {
+  background: #007bff;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 10px 16px;
+  transition: background 0.2s;
+}
+
+.btn-primary:hover {
+  background: #0069d9;
+}
+
+.btn-secondary {
+  background: #eee;
+  color: #222;
+  border: none;
+  border-radius: 6px;
+  padding: 10px 16px;
+  transition: background 0.2s;
+}
+
+.btn-secondary:hover {
+  background: #ddd;
+}
+
+.btn-back {
+  display: inline-block;
+  margin-bottom: 16px;
+  font-size: 14px;
+  background: none;
+  border: none;
+  color: #007bff;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.btn-back:hover {
+  color: #0056b3;
+}
+
+/* === Article List === */
+.article-list-container {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.list-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.article-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.article-item {
+  border: 1px solid #eee;
+  border-radius: 8px;
+  background: #fafafa;
+  transition: background 0.2s, box-shadow 0.2s;
+}
+
+.article-link {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 14px 16px;
+  background: none;
+  border: none;
+}
+
+.article-item:hover {
+  background: #f0f6ff;
+  box-shadow: 0 1px 3px rgba(0, 123, 255, 0.1);
+}
+
+.article-link h3 {
+  font-size: 18px;
+  margin-bottom: 6px;
+}
+
+.article-link p {
+  color: #555;
+  margin-bottom: 8px;
+}
+
+.article-link small {
+  color: #888;
+  font-size: 13px;
+}
+
+/* === Article View === */
+.article-view-container {
+  max-width: 750px;
+  margin: 0 auto;
+}
+
+.article-content h1 {
+  font-size: 26px;
+  margin-bottom: 8px;
+}
+
+.article-meta {
+  color: #777;
+  margin-bottom: 20px;
+  font-size: 14px;
+}
+
+.article-body {
+  border-top: 1px solid #eee;
+  padding-top: 16px;
+}
+
+/* === Article Form === */
+.article-form-container {
+  max-width: 700px;
+  margin: 0 auto;
+}
+
+.article-form h2 {
+  margin-bottom: 20px;
+}
+
+.article-form .form-group {
+  margin-bottom: 20px;
+  display: flex;
+  flex-direction: column;
+}
+
+.article-form label {
+  font-weight: 500;
+  margin-bottom: 6px;
+}
+
+.article-form input {
+  padding: 10px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  font-size: 15px;
+}
+
+.article-form input:focus {
+  border-color: #007bff;
+  outline: none;
+}
+
+.article-form small {
+  color: #888;
+  font-size: 13px;
+  align-self: flex-end;
+  margin-top: 4px;
+}
+
+.article-form .form-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.error-message {
+  background: #ffeaea;
+  color: #b10000;
+  padding: 10px;
+  border-radius: 6px;
+  margin-bottom: 12px;
+  font-size: 14px;
+}
+
+/* === Quill Editor === */
+#quill-editor {
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  background: #fff;
+}
+
+.ql-toolbar {
+  border-radius: 6px 6px 0 0;
+}
+
+.ql-container {
+  border-radius: 0 0 6px 6px;
+  min-height: 200px;
+}
