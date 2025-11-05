@@ -36,4 +36,33 @@ export class ArticleApi {
     }
     return response.json();
   }
+
+  static async updateArticle(id: string, title: string, content: Delta): Promise<Article> {
+    const response = await fetch(`${API_URL}/articles/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title, content }),
+    });
+    if (!response.ok) {
+      if (response.status === 404) {
+        throw new Error("Article not found");
+      }
+      const error: ApiError = await response.json();
+      throw new Error(error.error || "Failed to update article");
+    }
+    return response.json();
+  }
+
+  static async deleteArticle(id: string): Promise<void> {
+    const response = await fetch(`${API_URL}/articles/${id}`, {
+      method: "DELETE",
+    });
+    if (!response.ok) {
+      if (response.status === 404) {
+        throw new Error("Article not found");
+      }
+      const error: ApiError = await response.json();
+      throw new Error(error.error || "Failed to delete article");
+    }
+  }
 }

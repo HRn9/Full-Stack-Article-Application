@@ -18,6 +18,16 @@ app.use(express.json({ limit: '10mb' }));
   }
 })();
 
+const isArticleExists = async (id) => {
+  try {
+    const filePath = path.join(DATA_DIR, `${id}.json`);
+    await fs.access(filePath, fs.constants.F_OK);
+    return true;
+  } catch {
+    return false;
+  }
+};
+
 const validateArticle = (req, res, next) => {
   const { title, content } = req.body;
 
@@ -128,6 +138,51 @@ app.post('/api/articles', validateArticle, async (req, res) => {
   } catch (err) {
     console.error('Error creating article:', err);
     res.status(500).json({ error: 'Failed to create article' });
+  }
+});
+
+app.put('/api/articles/:id', validateArticle, async (req, res) => {
+  try {
+    const id = req.params.id;
+    const { title, content } = req.body;
+
+    const exists = await isArticleExists(id);
+    if (!exists) {
+      return res.status(404).json({ error: 'Article not found' });
+    }
+
+    const filePath = path.join(DATA_DIR, `${id}.json`);
+
+    const article = {
+      id,
+      title: title.trim(),
+      content,
+    };
+
+    await fs.writeFile(filePath, JSON.stringify(article, null, 2));
+    res.json(article);
+  } catch (err) {
+    console.error('Error updating article:', err);
+    res.status(500).json({ error: 'Failed to update article' });
+  }
+});
+
+app.delete('/api/articles/:id', async (req, res) => {
+  try {
+    const id = req.params.id;
+
+    const exists = await isArticleExists(id);
+    if (!exists) {
+      return res.status(404).json({ error: 'Article not found' });
+    }
+
+    const filePath = path.join(DATA_DIR, `${id}.json`);
+    await fs.unlink(filePath);
+
+    res.status(204).send();
+  } catch (err) {
+    console.error('Error deleting article:', err);
+    res.status(500).json({ error: 'Failed to delete article' });
   }
 });
 

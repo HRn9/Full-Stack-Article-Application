@@ -60,6 +60,41 @@ const App: React.FC = () => {
     }
   };
 
+  const handleUpdateArticle = async (title: string, content: Delta): Promise<void> => {
+    if (!selectedArticle) return;
+    
+    try {
+      await ArticleApi.updateArticle(selectedArticle.id, title, content);
+      await fetchArticles();
+      setView('list');
+      setSelectedArticle(null);
+      setError('');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to update article';
+      setError(message);
+    }
+  };
+
+  const handleDeleteArticle = async (): Promise<void> => {
+    if (!selectedArticle) return;
+    
+    try {
+      await ArticleApi.deleteArticle(selectedArticle.id);
+      await fetchArticles();
+      setView('list');
+      setSelectedArticle(null);
+      setError('');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to delete article';
+      setError(message);
+    }
+  };
+
+  const handleEditArticle = (): void => {
+    setView('edit');
+    setError('');
+  };
+
   return (
     <div className="app">
       <header className="app-header">
@@ -99,6 +134,8 @@ const App: React.FC = () => {
             <ArticleView 
               article={selectedArticle}
               onBack={() => setView('list')}
+              onEdit={handleEditArticle}
+              onDelete={handleDeleteArticle}
             />
           ) : null
         )}
@@ -107,6 +144,17 @@ const App: React.FC = () => {
           <ArticleForm 
             onSubmit={handleCreateArticle}
             onCancel={() => setView('list')}
+          />
+        )}
+
+        {view === 'edit' && selectedArticle && (
+          <ArticleForm 
+            article={selectedArticle}
+            onSubmit={handleUpdateArticle}
+            onCancel={() => {
+              setView('view');
+              setError('');
+            }}
           />
         )}
       </main>

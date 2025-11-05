@@ -1,15 +1,17 @@
 import React, { useRef, useEffect, useState } from 'react';
 import Quill, { Delta } from 'quill';
 import 'quill/dist/quill.snow.css';
+import type { Article } from '../types';
 
 interface ArticleFormProps {
+  article?: Article;
   onSubmit: (title: string, content: Delta) => Promise<void>;
   onCancel: () => void;
 }
 
-const ArticleForm: React.FC<ArticleFormProps> = ({ onSubmit, onCancel }) => {
-  const [title, setTitle] = useState<string>('');
-  const [content, setContent] = useState<Delta>();
+const ArticleForm: React.FC<ArticleFormProps> = ({ article, onSubmit, onCancel }) => {
+  const [title, setTitle] = useState<string>(article?.title || '');
+  const [content, setContent] = useState<Delta | undefined>(article?.content);
   const [submitting, setSubmitting] = useState<boolean>(false);
   const [error, setError] = useState<string>('');
   const editorContainerRef = useRef<HTMLDivElement>(null);
@@ -43,6 +45,18 @@ const ArticleForm: React.FC<ArticleFormProps> = ({ onSubmit, onCancel }) => {
       });
     }
   }, []);
+
+  useEffect(() => {
+    if (quillRef.current && article?.content) {
+      quillRef.current.setContents(article.content);
+      setContent(article.content);
+      setTitle(article.title);
+    } else if (quillRef.current && !article) {
+      quillRef.current.setText('');
+      setContent(undefined);
+      setTitle('');
+    }
+  }, [article]);
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>): Promise<void> => {
     e.preventDefault();
     setError('');
@@ -74,7 +88,7 @@ const ArticleForm: React.FC<ArticleFormProps> = ({ onSubmit, onCancel }) => {
 
   return (
     <div className="article-form-container">
-      <h2>Create New Article</h2>
+      <h2>{article ? 'Edit Article' : 'Create New Article'}</h2>
       <form onSubmit={handleSubmit} className="article-form">
         {error && <div className="error-message">{error}</div>}
 
@@ -106,7 +120,7 @@ const ArticleForm: React.FC<ArticleFormProps> = ({ onSubmit, onCancel }) => {
             className="btn-primary"
             disabled={submitting}
           >
-            {submitting ? 'Publishing...' : 'Publish Article'}
+            {submitting ? (article ? 'Updating...' : 'Publishing...') : (article ? 'Update Article' : 'Publish Article')}
           </button>
           <button 
             type="button" 

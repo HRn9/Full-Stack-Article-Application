@@ -10,4 +10,4 @@ export interface ApiError {
   error: string;
 }
 
-export type AppView = 'list' | 'view' | 'create';
+export type AppView = 'list' | 'view' | 'create' | 'edit';
