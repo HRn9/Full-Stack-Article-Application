@@ -34,6 +34,8 @@ app.get('/api/articles', async (req, res) => {
     const files = await fs.readdir(DATA_DIR);
     const articles = [];
 
+    const getPreview = (content) => content.ops.map(op => typeof op.insert === 'string' ? op.insert : '').join('').slice(0, 150).trim()
+
     for (const file of files) {
       if (file.endsWith('.json')) {
         try {
@@ -45,7 +47,7 @@ app.get('/api/articles', async (req, res) => {
           articles.push({
             id,
             title: article.title,
-            content: article.content,
+            preview: getPreview(article.content)
           });
         } catch (fileErr) {
           console.error(`Error reading file ${file}:`, fileErr);
