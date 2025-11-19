@@ -1,4 +1,4 @@
-import type { Article } from "../types";
+import type { Article } from '../types';
 
 interface ArticleListProps {
   articles: Article[];
@@ -43,6 +43,13 @@ const ArticleList: React.FC<ArticleListProps> = ({
             >
               <h3>{article.title}</h3>
               <p>{article.preview || 'No preview available'} ...</p>
+              {article.attachmentCount !== undefined &&
+                article.attachmentCount > 0 && (
+                  <small>
+                    📎 {article.attachmentCount} attachment
+                    {article.attachmentCount !== 1 ? 's' : ''}
+                  </small>
+                )}
             </button>
           </li>
         ))}
