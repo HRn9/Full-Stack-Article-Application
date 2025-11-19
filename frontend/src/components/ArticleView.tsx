@@ -1,6 +1,6 @@
-import React, { useState } from "react";
-import type { Article } from "../types";
-import QuillReadOnly from "./QuillReadOnly";
+import React, { useState } from 'react';
+import type { Article } from '../types';
+import QuillReadOnly from './QuillReadOnly';
 
 interface ArticleViewProps {
   article: Article;
@@ -9,12 +9,21 @@ interface ArticleViewProps {
   onDelete: () => Promise<void>;
 }
 
-const ArticleView: React.FC<ArticleViewProps> = ({ article, onBack, onEdit, onDelete }) => {
+const ArticleView: React.FC<ArticleViewProps> = ({
+  article,
+  onBack,
+  onEdit,
+  onDelete,
+}) => {
   const [deleting, setDeleting] = useState<boolean>(false);
   const [deleteError, setDeleteError] = useState<string>('');
 
   const handleDelete = async (): Promise<void> => {
-    if (!window.confirm('Are you sure you want to delete this article? This action cannot be undone.')) {
+    if (
+      !window.confirm(
+        'Are you sure you want to delete this article? This action cannot be undone.'
+      )
+    ) {
       return;
     }
 
@@ -24,7 +33,7 @@ const ArticleView: React.FC<ArticleViewProps> = ({ article, onBack, onEdit, onDe
       await onDelete();
     } catch (err) {
       const message =
-        err instanceof Error ? err.message : "Failed to delete article";
+        err instanceof Error ? err.message : 'Failed to delete article';
       setDeleteError(message);
     } finally {
       setDeleting(false);
@@ -38,15 +47,15 @@ const ArticleView: React.FC<ArticleViewProps> = ({ article, onBack, onEdit, onDe
           ← Back to Articles
         </button>
         <div className="article-actions">
-          <button 
-            onClick={onEdit} 
+          <button
+            onClick={onEdit}
             className="btn-secondary"
             disabled={deleting}
           >
             Edit
           </button>
-          <button 
-            onClick={handleDelete} 
+          <button
+            onClick={handleDelete}
             className="btn-danger"
             disabled={deleting}
           >

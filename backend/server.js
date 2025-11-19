@@ -44,9 +44,7 @@ const validateArticle = (req, res, next) => {
   }
 
   const isDelta =
-    content &&
-    typeof content === 'object' &&
-    Array.isArray(content.ops);
+    content && typeof content === 'object' && Array.isArray(content.ops);
 
   if (!isDelta) {
     return res.status(400).json({
@@ -106,7 +104,7 @@ app.get('/api/articles/:id', async (req, res) => {
     const filePath = path.join(DATA_DIR, `${req.params.id}.json`);
     const data = await fs.readFile(filePath, 'utf-8');
     const article = JSON.parse(data);
-    
+
     res.json({
       id: article.id,
       title: article.title,
@@ -124,7 +122,8 @@ app.get('/api/articles/:id', async (req, res) => {
 app.post('/api/articles', validateArticle, async (req, res) => {
   try {
     const { title, content } = req.body;
-    const id = Date.now().toString(36) + Math.random().toString(36).substring(2);
+    const id =
+      Date.now().toString(36) + Math.random().toString(36).substring(2);
     const filePath = path.join(DATA_DIR, `${id}.json`);
 
     const article = {

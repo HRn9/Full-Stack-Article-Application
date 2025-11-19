@@ -26,7 +26,8 @@ const App: React.FC = () => {
       const data = await ArticleApi.listArticles();
       setArticles(data);
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Could not load articles';
+      const message =
+        err instanceof Error ? err.message : 'Could not load articles';
       setError(`${message}. Check if backend is running.`);
     } finally {
       setLoading(false);
@@ -41,28 +42,36 @@ const App: React.FC = () => {
       setSelectedArticle(article);
       setView('view');
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Could not load article';
+      const message =
+        err instanceof Error ? err.message : 'Could not load article';
       setError(message);
     } finally {
       setLoadingArticle(false);
     }
   };
 
-  const handleCreateArticle = async (title: string, content: Delta): Promise<void> => {
+  const handleCreateArticle = async (
+    title: string,
+    content: Delta
+  ): Promise<void> => {
     try {
       await ArticleApi.createArticle(title, content);
       await fetchArticles();
       setView('list');
       setError('');
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to create article';
+      const message =
+        err instanceof Error ? err.message : 'Failed to create article';
       setError(message);
     }
   };
 
-  const handleUpdateArticle = async (title: string, content: Delta): Promise<void> => {
+  const handleUpdateArticle = async (
+    title: string,
+    content: Delta
+  ): Promise<void> => {
     if (!selectedArticle) return;
-    
+
     try {
       await ArticleApi.updateArticle(selectedArticle.id, title, content);
       await fetchArticles();
@@ -70,14 +79,15 @@ const App: React.FC = () => {
       setSelectedArticle(null);
       setError('');
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to update article';
+      const message =
+        err instanceof Error ? err.message : 'Failed to update article';
       setError(message);
     }
   };
 
   const handleDeleteArticle = async (): Promise<void> => {
     if (!selectedArticle) return;
-    
+
     try {
       await ArticleApi.deleteArticle(selectedArticle.id);
       await fetchArticles();
@@ -85,7 +95,8 @@ const App: React.FC = () => {
       setSelectedArticle(null);
       setError('');
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to delete article';
+      const message =
+        err instanceof Error ? err.message : 'Failed to delete article';
       setError(message);
     }
   };
@@ -100,13 +111,13 @@ const App: React.FC = () => {
       <header className="app-header">
         <h1>📝 Article Manager</h1>
         <nav className="nav">
-          <button 
+          <button
             className={`nav-btn ${view === 'list' ? 'active' : ''}`}
             onClick={() => setView('list')}
           >
             Articles
           </button>
-          <button 
+          <button
             className={`nav-btn ${view === 'create' ? 'active' : ''}`}
             onClick={() => setView('create')}
           >
@@ -119,7 +130,7 @@ const App: React.FC = () => {
         {error && <div className="error-banner">{error}</div>}
 
         {view === 'list' && (
-          <ArticleList 
+          <ArticleList
             articles={articles}
             loading={loading}
             onSelectArticle={handleSelectArticle}
@@ -127,28 +138,27 @@ const App: React.FC = () => {
           />
         )}
 
-        {view === 'view' && (
-          loadingArticle ? (
+        {view === 'view' &&
+          (loadingArticle ? (
             <div className="loading">Loading article...</div>
           ) : selectedArticle ? (
-            <ArticleView 
+            <ArticleView
               article={selectedArticle}
               onBack={() => setView('list')}
               onEdit={handleEditArticle}
               onDelete={handleDeleteArticle}
             />
-          ) : null
-        )}
+          ) : null)}
 
         {view === 'create' && (
-          <ArticleForm 
+          <ArticleForm
             onSubmit={handleCreateArticle}
             onCancel={() => setView('list')}
           />
         )}
 
         {view === 'edit' && selectedArticle && (
-          <ArticleForm 
+          <ArticleForm
             article={selectedArticle}
             onSubmit={handleUpdateArticle}
             onCancel={() => {

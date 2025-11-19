@@ -1,5 +1,5 @@
-import type { Delta } from "quill";
-import type { Article } from "../types";
+import type { Delta } from 'quill';
+import type { Article } from '../types';
 
 interface ArticleListProps {
   articles: Article[];
@@ -34,7 +34,9 @@ const ArticleList: React.FC<ArticleListProps> = ({
     return (
       <div className="empty-state">
         <p>No articles yet. Create one to get started!</p>
-        <button onClick={onRefresh} className="btn-secondary">Refresh</button>
+        <button onClick={onRefresh} className="btn-secondary">
+          Refresh
+        </button>
       </div>
     );
   }
@@ -43,7 +45,9 @@ const ArticleList: React.FC<ArticleListProps> = ({
     <div className="article-list-container">
       <div className="list-header">
         <h2>Articles ({articles.length})</h2>
-        <button onClick={onRefresh} className="btn-secondary">Refresh</button>
+        <button onClick={onRefresh} className="btn-secondary">
+          Refresh
+        </button>
       </div>
       <ul className="article-list">
         {articles.map((article) => (
@@ -53,7 +57,9 @@ const ArticleList: React.FC<ArticleListProps> = ({
               className="article-link"
             >
               <h3>{article.title}</h3>
-              <p>{getPreviewText(article.content) || 'No preview available'} ...</p>
+              <p>
+                {getPreviewText(article.content) || 'No preview available'} ...
+              </p>
             </button>
           </li>
         ))}

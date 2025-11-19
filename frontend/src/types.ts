@@ -1,4 +1,4 @@
-import type { Delta } from "quill";
+import type { Delta } from 'quill';
 
 export interface Article {
   id: string;

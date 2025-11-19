@@ -9,7 +9,11 @@ interface ArticleFormProps {
   onCancel: () => void;
 }
 
-const ArticleForm: React.FC<ArticleFormProps> = ({ article, onSubmit, onCancel }) => {
+const ArticleForm: React.FC<ArticleFormProps> = ({
+  article,
+  onSubmit,
+  onCancel,
+}) => {
   const [title, setTitle] = useState<string>(article?.title || '');
   const [content, setContent] = useState<Delta | undefined>(article?.content);
   const [submitting, setSubmitting] = useState<boolean>(false);
@@ -33,8 +37,8 @@ const ArticleForm: React.FC<ArticleFormProps> = ({ article, onSubmit, onCancel }
             ['blockquote', 'code-block'],
             [{ list: 'ordered' }, { list: 'bullet' }],
             ['link'],
-            ['clean']
-          ]
+            ['clean'],
+          ],
         },
         placeholder: 'Write your article here...',
       });
@@ -57,7 +61,9 @@ const ArticleForm: React.FC<ArticleFormProps> = ({ article, onSubmit, onCancel }
       setTitle('');
     }
   }, [article]);
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>): Promise<void> => {
+  const handleSubmit = async (
+    e: React.FormEvent<HTMLFormElement>
+  ): Promise<void> => {
     e.preventDefault();
     setError('');
 
@@ -65,7 +71,7 @@ const ArticleForm: React.FC<ArticleFormProps> = ({ article, onSubmit, onCancel }
       setError('Title is required');
       return;
     }
-  
+
     if (!content) {
       setError('Content is required');
       return;
@@ -79,7 +85,8 @@ const ArticleForm: React.FC<ArticleFormProps> = ({ article, onSubmit, onCancel }
         quillRef.current.setText('');
       }
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to submit article';
+      const message =
+        err instanceof Error ? err.message : 'Failed to submit article';
       setError(message);
     } finally {
       setSubmitting(false);
@@ -98,7 +105,9 @@ const ArticleForm: React.FC<ArticleFormProps> = ({ article, onSubmit, onCancel }
             id="title"
             type="text"
             value={title}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setTitle(e.target.value)}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+              setTitle(e.target.value)
+            }
             placeholder="Enter article title"
             maxLength={200}
             disabled={submitting}
@@ -108,22 +117,21 @@ const ArticleForm: React.FC<ArticleFormProps> = ({ article, onSubmit, onCancel }
 
         <div className="form-group">
           <label htmlFor="quill-editor">Content *</label>
-          <div 
-            ref={editorContainerRef}
-            id="quill-editor"
-          />
+          <div ref={editorContainerRef} id="quill-editor" />
         </div>
 
         <div className="form-actions">
-          <button 
-            type="submit" 
-            className="btn-primary"
-            disabled={submitting}
-          >
-            {submitting ? (article ? 'Updating...' : 'Publishing...') : (article ? 'Update Article' : 'Publish Article')}
+          <button type="submit" className="btn-primary" disabled={submitting}>
+            {submitting
+              ? article
+                ? 'Updating...'
+                : 'Publishing...'
+              : article
+                ? 'Update Article'
+                : 'Publish Article'}
           </button>
-          <button 
-            type="button" 
+          <button
+            type="button"
             onClick={onCancel}
             className="btn-secondary"
             disabled={submitting}
