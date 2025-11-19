@@ -180,6 +180,37 @@ button {
   margin: 0 auto;
 }
 
+.article-view-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.article-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.btn-danger {
+  background: #dc3545;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 10px 16px;
+  transition: background 0.2s;
+  cursor: pointer;
+}
+
+.btn-danger:hover:not(:disabled) {
+  background: #c82333;
+}
+
+.btn-danger:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+}
+
 .article-content h1 {
   font-size: 26px;
   margin-bottom: 8px;
