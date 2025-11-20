@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import type { Article, AppView } from './types';
+import type { Article, AppView, Attachment } from './types';
 import { ArticleApi } from './api';
 import './App.css';
 import ArticleForm from './components/ArticleForm';
 import ArticleList from './components/ArticleList';
 import ArticleView from './components/ArticleView';
+import NotificationToast from './components/NotificationToast';
+import { useWebSocket } from './hooks/useWebSocket';
 import type { Delta } from 'quill';
 
 const App: React.FC = () => {
@@ -14,6 +16,8 @@ const App: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(false);
   const [loadingArticle, setLoadingArticle] = useState<boolean>(false);
   const [error, setError] = useState<string>('');
+
+  const { notifications, isConnected, removeNotification } = useWebSocket();
 
   useEffect(() => {
     fetchArticles();
@@ -52,10 +56,11 @@ const App: React.FC = () => {
 
   const handleCreateArticle = async (
     title: string,
-    content: Delta
+    content: Delta,
+    attachments: Attachment[]
   ): Promise<void> => {
     try {
-      await ArticleApi.createArticle(title, content);
+      await ArticleApi.createArticle(title, content, attachments);
       await fetchArticles();
       setView('list');
       setError('');
@@ -63,17 +68,24 @@ const App: React.FC = () => {
       const message =
         err instanceof Error ? err.message : 'Failed to create article';
       setError(message);
+      throw err;
     }
   };
 
   const handleUpdateArticle = async (
     title: string,
-    content: Delta
+    content: Delta,
+    attachments: Attachment[]
   ): Promise<void> => {
     if (!selectedArticle) return;
 
     try {
-      await ArticleApi.updateArticle(selectedArticle.id, title, content);
+      await ArticleApi.updateArticle(
+        selectedArticle.id,
+        title,
+        content,
+        attachments
+      );
       await fetchArticles();
       setView('list');
       setSelectedArticle(null);
@@ -82,6 +94,7 @@ const App: React.FC = () => {
       const message =
         err instanceof Error ? err.message : 'Failed to update article';
       setError(message);
+      throw err;
     }
   };
 
@@ -110,20 +123,32 @@ const App: React.FC = () => {
     <div className="app">
       <header className="app-header">
         <h1>📝 Article Manager</h1>
-        <nav className="nav">
-          <button
-            className={`nav-btn ${view === 'list' ? 'active' : ''}`}
-            onClick={() => setView('list')}
+        <div className="header-right">
+          <div
+            className={`ws-status ${isConnected ? 'connected' : 'disconnected'}`}
           >
-            Articles
-          </button>
-          <button
-            className={`nav-btn ${view === 'create' ? 'active' : ''}`}
-            onClick={() => setView('create')}
-          >
-            Create New
-          </button>
-        </nav>
+            <span
+              className="ws-indicator"
+              title={isConnected ? 'Connected' : 'Disconnected'}
+            >
+              {isConnected ? '🟢' : '🔴'}
+            </span>
+          </div>
+          <nav className="nav">
+            <button
+              className={`nav-btn ${view === 'list' ? 'active' : ''}`}
+              onClick={() => setView('list')}
+            >
+              Articles
+            </button>
+            <button
+              className={`nav-btn ${view === 'create' ? 'active' : ''}`}
+              onClick={() => setView('create')}
+            >
+              Create New
+            </button>
+          </nav>
+        </div>
       </header>
 
       <main className="app-main">
@@ -168,6 +193,11 @@ const App: React.FC = () => {
           />
         )}
       </main>
+
+      <NotificationToast
+        notifications={notifications}
+        onRemove={removeNotification}
+      />
     </div>
   );
 };

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import type { Article } from '../types';
 import QuillReadOnly from './QuillReadOnly';
+import Attachments from './Attachments';
 
 interface ArticleViewProps {
   article: Article;
@@ -66,6 +67,17 @@ const ArticleView: React.FC<ArticleViewProps> = ({
       {deleteError && <div className="error-message">{deleteError}</div>}
       <article className="article-content">
         <h1>{article.title}</h1>
+        {article.attachments && article.attachments.length > 0 && (
+          <div className="article-attachments">
+            <Attachments
+              attachments={article.attachments}
+              pendingFiles={[]}
+              onChange={() => {}}
+              onPendingFilesChange={() => {}}
+              readOnly={true}
+            />
+          </div>
+        )}
         <div className="article-body">
           <QuillReadOnly delta={article.content} />
         </div>
