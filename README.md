@@ -17,10 +17,16 @@ A simple full-stack application for managing articles with a React frontend and 
 ```
 fullstack-atricle-app/
 ├── backend/              # Node.js/Express server
-│   ├── data/            # Article storage directory
-│   ├── attachments/     # File attachments storage
-│   ├── server.js        # Express server with WebSocket support
-│   └── validateArticle.js
+│   ├── src/
+│   │   ├── config/           # App configuration
+│   │   ├── middleware/       # Express middleware
+│   │   ├── routes/           # API route modules
+│   │   ├── utils/            # FS helpers, preview, validation
+│   │   ├── websocket/        # WebSocket manager
+│   │   ├── app.js            # Express app setup
+│   │   └── server.js         # Server entry point
+│   ├── data/                 # JSON article files
+│   └── attachments/          # Uploaded files
 ├── frontend/            # React application
 │   └── src/
 │       ├── components/  # React components

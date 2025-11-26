@@ -2,9 +2,10 @@
   "name": "backend",
   "version": "1.0.0",
   "description": "",
-  "main": "server.js",
+  "main": "src/server.js",
   "scripts": {
-    "dev": "node server.js"
+    "start": "node src/server.js",
+    "dev": "node src/server.js"
   },
   "dependencies": {
     "cors": "^2.8.5",
