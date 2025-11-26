@@ -1,11 +1,17 @@
 import React, { useRef, useEffect, useState } from 'react';
 import Quill, { Delta } from 'quill';
 import 'quill/dist/quill.snow.css';
-import type { Article } from '../types';
+import type { Article, Attachment } from '../types';
+import Attachments from './Attachments';
+import { ArticleApi } from '../api';
 
 interface ArticleFormProps {
   article?: Article;
-  onSubmit: (title: string, content: Delta) => Promise<void>;
+  onSubmit: (
+    title: string,
+    content: Delta,
+    attachments: Attachment[]
+  ) => Promise<void>;
   onCancel: () => void;
 }
 
@@ -16,8 +22,13 @@ const ArticleForm: React.FC<ArticleFormProps> = ({
 }) => {
   const [title, setTitle] = useState<string>(article?.title || '');
   const [content, setContent] = useState<Delta | undefined>(article?.content);
+  const [attachments, setAttachments] = useState<Attachment[]>(
+    article?.attachments || []
+  );
+  const [pendingFiles, setPendingFiles] = useState<File[]>([]);
   const [submitting, setSubmitting] = useState<boolean>(false);
   const [error, setError] = useState<string>('');
+  const [uploadProgress, setUploadProgress] = useState<string>('');
   const editorContainerRef = useRef<HTMLDivElement>(null);
   const quillRef = useRef<Quill | null>(null);
 
@@ -55,17 +66,23 @@ const ArticleForm: React.FC<ArticleFormProps> = ({
       quillRef.current.setContents(article.content);
       setContent(article.content);
       setTitle(article.title);
+      setAttachments(article.attachments || []);
+      setPendingFiles([]);
     } else if (quillRef.current && !article) {
       quillRef.current.setText('');
       setContent(undefined);
       setTitle('');
+      setAttachments([]);
+      setPendingFiles([]);
     }
   }, [article]);
+
   const handleSubmit = async (
     e: React.FormEvent<HTMLFormElement>
   ): Promise<void> => {
     e.preventDefault();
     setError('');
+    setUploadProgress('');
 
     if (!title.trim()) {
       setError('Title is required');
@@ -78,9 +95,41 @@ const ArticleForm: React.FC<ArticleFormProps> = ({
     }
 
     setSubmitting(true);
+
     try {
-      await onSubmit(title, content);
+      const uploadedAttachments: Attachment[] = [];
+
+      if (pendingFiles.length > 0) {
+        setUploadProgress(`Uploading ${pendingFiles.length} file(s)...`);
+
+        for (let i = 0; i < pendingFiles.length; i++) {
+          const file = pendingFiles[i];
+          setUploadProgress(
+            `Uploading file ${i + 1} of ${pendingFiles.length}: ${file.name}`
+          );
+
+          try {
+            const uploadedFile = await ArticleApi.uploadFile(file);
+            uploadedAttachments.push(uploadedFile);
+          } catch (uploadError) {
+            const message =
+              uploadError instanceof Error
+                ? uploadError.message
+                : 'Failed to upload file';
+            throw new Error(`Failed to upload ${file.name}: ${message}`);
+          }
+        }
+      }
+
+      const allAttachments = [...attachments, ...uploadedAttachments];
+
+      setUploadProgress('Saving article...');
+
+      await onSubmit(title, content, allAttachments);
+
       setTitle('');
+      setAttachments([]);
+      setPendingFiles([]);
       if (quillRef.current) {
         quillRef.current.setText('');
       }
@@ -90,6 +139,7 @@ const ArticleForm: React.FC<ArticleFormProps> = ({
       setError(message);
     } finally {
       setSubmitting(false);
+      setUploadProgress('');
     }
   };
 
@@ -98,6 +148,9 @@ const ArticleForm: React.FC<ArticleFormProps> = ({
       <h2>{article ? 'Edit Article' : 'Create New Article'}</h2>
       <form onSubmit={handleSubmit} className="article-form">
         {error && <div className="error-message">{error}</div>}
+        {uploadProgress && (
+          <div className="upload-progress">{uploadProgress}</div>
+        )}
 
         <div className="form-group">
           <label htmlFor="title">Title *</label>
@@ -120,12 +173,20 @@ const ArticleForm: React.FC<ArticleFormProps> = ({
           <div ref={editorContainerRef} id="quill-editor" />
         </div>
 
+        <div className="form-group">
+          <Attachments
+            attachments={attachments}
+            pendingFiles={pendingFiles}
+            onChange={setAttachments}
+            onPendingFilesChange={setPendingFiles}
+            readOnly={false}
+          />
+        </div>
+
         <div className="form-actions">
           <button type="submit" className="btn-primary" disabled={submitting}>
             {submitting
-              ? article
-                ? 'Updating...'
-                : 'Publishing...'
+              ? uploadProgress || (article ? 'Updating...' : 'Publishing...')
               : article
                 ? 'Update Article'
                 : 'Publish Article'}

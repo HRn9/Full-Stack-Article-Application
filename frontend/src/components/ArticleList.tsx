@@ -1,4 +1,3 @@
-import type { Delta } from 'quill';
 import type { Article } from '../types';
 
 interface ArticleListProps {
@@ -7,20 +6,6 @@ interface ArticleListProps {
   onSelectArticle: (id: string) => Promise<void>;
   onRefresh: () => Promise<void>;
 }
-const getPreviewText = (content: Delta): string => {
-  try {
-    if (content && typeof content === 'object' && 'ops' in content) {
-      return content.ops
-        .map((op) => (typeof op.insert === 'string' ? op.insert : ''))
-        .join('')
-        .slice(0, 150)
-        .trim();
-    }
-    return '';
-  } catch {
-    return '';
-  }
-};
 
 const ArticleList: React.FC<ArticleListProps> = ({
   articles,
@@ -57,9 +42,14 @@ const ArticleList: React.FC<ArticleListProps> = ({
               className="article-link"
             >
               <h3>{article.title}</h3>
-              <p>
-                {getPreviewText(article.content) || 'No preview available'} ...
-              </p>
+              <p>{article.preview || 'No preview available'} ...</p>
+              {article.attachmentCount !== undefined &&
+                article.attachmentCount > 0 && (
+                  <small>
+                    📎 {article.attachmentCount} attachment
+                    {article.attachmentCount !== 1 ? 's' : ''}
+                  </small>
+                )}
             </button>
           </li>
         ))}
