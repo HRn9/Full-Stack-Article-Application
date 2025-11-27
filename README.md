@@ -6,11 +6,12 @@ A simple full-stack application for managing articles with a React frontend and 
 
 - **Frontend**: React + TypeScript with Vite
 - **Backend**: Node.js + Express.js
+- **Database**: PostgreSQL with Sequelize ORM
 - **WYSIWYG Editor**: Quill editor for rich text editing
 - **Article Management**: Create, view, edit, and delete articles
 - **File Attachments**: Upload and attach images (JPG, PNG, GIF, WEBP) and PDFs to articles
 - **Real-Time Notifications**: WebSocket support for instant notifications on article changes
-- **File Storage**: Articles stored as JSON files in the `/data` directory
+- **Data Persistence**: Database storage with file system support for attachments
 
 ## Project Structure
 
@@ -39,6 +40,7 @@ fullstack-atricle-app/
 
 - Node.js (v16 or higher)
 - npm (comes with Node.js)
+- PostgreSQL (v12 or higher)
 
 ## Setup Instructions
 
@@ -56,7 +58,40 @@ cd ../frontend
 npm install
 ```
 
-### 3. Start the Backend Server
+### 3. Set Up PostgreSQL Database
+
+#### Install PostgreSQL
+
+If you don't have PostgreSQL installed:
+
+- **macOS**: `brew install postgresql@15`
+- **Ubuntu/Debian**: `sudo apt-get install postgresql postgresql-contrib`
+- **Windows**: Download from [postgresql.org](https://www.postgresql.org/download/windows/)
+
+#### Configure Database
+
+1. Create a `.env` file in the `backend` directory
+
+2. Update the `.env` file with your PostgreSQL credentials:
+```env
+DB_HOST=localhost
+DB_PORT=5432
+DB_NAME=article_app_db
+DB_USER=postgres
+DB_PASSWORD=postgres
+```
+
+#### Create Database and Run Migrations
+
+```bash
+# Create the database
+npm run db:create
+
+# Run migrations to create tables
+npm run db:migrate
+```
+
+### 4. Start the Backend Server
 
 From the `backend` directory:
 
@@ -66,7 +101,7 @@ npm run dev
 
 The backend server will start on `http://localhost:5001`
 
-### 4. Start the Frontend Development Server
+### 5. Start the Frontend Development Server
 
 From the `frontend` directory (in a new terminal):
 
@@ -205,6 +240,31 @@ Connect to `ws://localhost:5001` to receive real-time notifications.
 - Error handling is implemented on both frontend and backend
 - Real-time notifications work across multiple browser tabs/windows
 
+## Database Management
+
+### Available Commands
+
+```bash
+# Create the database
+npm run db:create
+
+# Run all migrations
+npm run db:migrate
+
+# Undo last migration
+npm run db:migrate:undo
+
+# Reset database (drop, create, migrate)
+npm run db:reset
+```
+
+### Database Schema
+
+The application uses two main tables:
+
+- **articles**: Stores article data (id, title, content, timestamps)
+- **attachments**: Stores file attachment metadata with foreign key to articles
+
 ## Dependencies
 
 ### Backend
@@ -212,6 +272,9 @@ Connect to `ws://localhost:5001` to receive real-time notifications.
 - `cors`: Cross-origin resource sharing
 - `multer`: File upload handling
 - `ws`: WebSocket server
+- `sequelize`: ORM for PostgreSQL
+- `pg`: PostgreSQL driver
+- `dotenv`: Environment variable management
 
 ### Frontend
 - `react`: UI library
