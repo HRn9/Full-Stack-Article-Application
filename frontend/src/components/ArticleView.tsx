@@ -2,12 +2,21 @@ import React, { useState } from 'react';
 import type { Article } from '../types';
 import QuillReadOnly from './QuillReadOnly';
 import Attachments from './Attachments';
+import CommentsSection from './CommentsSection';
 
 interface ArticleViewProps {
   article: Article;
   onBack: () => void;
   onEdit: () => void;
   onDelete: () => Promise<void>;
+  onAddComment: (articleId: string, body: string, author?: string) => Promise<void>;
+  onUpdateComment: (
+    articleId: string,
+    commentId: string,
+    body: string,
+    author?: string
+  ) => Promise<void>;
+  onDeleteComment: (articleId: string, commentId: string) => Promise<void>;
 }
 
 const ArticleView: React.FC<ArticleViewProps> = ({
@@ -15,6 +24,9 @@ const ArticleView: React.FC<ArticleViewProps> = ({
   onBack,
   onEdit,
   onDelete,
+  onAddComment,
+  onUpdateComment,
+  onDeleteComment,
 }) => {
   const [deleting, setDeleting] = useState<boolean>(false);
   const [deleteError, setDeleteError] = useState<string>('');
@@ -67,6 +79,11 @@ const ArticleView: React.FC<ArticleViewProps> = ({
       {deleteError && <div className="error-message">{deleteError}</div>}
       <article className="article-content">
         <h1>{article.title}</h1>
+        {article.workspace && (
+          <div className="workspace-badge">
+            Workspace: {article.workspace.name}
+          </div>
+        )}
         {article.attachments && article.attachments.length > 0 && (
           <div className="article-attachments">
             <Attachments
@@ -81,6 +98,13 @@ const ArticleView: React.FC<ArticleViewProps> = ({
         <div className="article-body">
           <QuillReadOnly delta={article.content} />
         </div>
+        <CommentsSection
+          articleId={article.id}
+          comments={article.comments || []}
+          onAdd={onAddComment}
+          onUpdate={onUpdateComment}
+          onDelete={onDeleteComment}
+        />
       </article>
     </div>
   );

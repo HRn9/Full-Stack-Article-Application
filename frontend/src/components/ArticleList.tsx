@@ -43,13 +43,25 @@ const ArticleList: React.FC<ArticleListProps> = ({
             >
               <h3>{article.title}</h3>
               <p>{article.preview || 'No preview available'} ...</p>
-              {article.attachmentCount !== undefined &&
-                article.attachmentCount > 0 && (
-                  <small>
-                    📎 {article.attachmentCount} attachment
-                    {article.attachmentCount !== 1 ? 's' : ''}
-                  </small>
-                )}
+              {(article.attachmentCount !== undefined ||
+                article.commentCount !== undefined) && (
+                <div className="article-meta">
+                  {article.attachmentCount !== undefined && (
+                    <small>
+                      📎 {article.attachmentCount}{' '}
+                      {article.attachmentCount === 1
+                        ? 'attachment'
+                        : 'attachments'}
+                    </small>
+                  )}
+                  {article.commentCount !== undefined && (
+                    <small>
+                      💬 {article.commentCount}{' '}
+                      {article.commentCount === 1 ? 'comment' : 'comments'}
+                    </small>
+                  )}
+                </div>
+              )}
             </button>
           </li>
         ))}
