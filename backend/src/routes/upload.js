@@ -31,9 +31,15 @@ router.post('/', (req, res) => {
         return res.status(400).json({ error: 'No file uploaded' });
       }
 
+      // Multer/Busboy decodes non-ASCII filenames as latin1; re-encode to utf8 for display.
+      const decodedOriginalName = Buffer.from(
+        req.file.originalname,
+        'latin1'
+      ).toString('utf8');
+
       const fileInfo = {
         filename: req.file.filename,
-        originalName: req.file.originalname,
+        originalName: decodedOriginalName,
         mimetype: req.file.mimetype,
         size: req.file.size,
         url: `/attachments/${req.file.filename}`,

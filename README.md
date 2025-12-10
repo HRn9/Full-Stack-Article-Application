@@ -8,7 +8,7 @@ A simple full-stack application for managing articles with a React frontend and 
 - **Backend**: Node.js + Express.js
 - **Database**: PostgreSQL with Sequelize ORM
 - **WYSIWYG Editor**: Quill editor for rich text editing
-- **Article Management**: Create, view, edit, and delete articles
+- **Article Management**: Create, view, edit, and delete articles (with version history)
 - **Workspaces**: Group articles by workspace; switch or view across all
 - **Comments**: Add/update/delete comments on articles
 - **File Attachments**: Upload and attach images (JPG, PNG, GIF, WEBP) and PDFs to articles (files stored on disk, metadata in DB)
@@ -132,7 +132,7 @@ Returns a list of articles with preview, attachment/comment counts. If `workspac
 ```
 
 ### `GET /api/articles/:id`
-Returns a specific article by ID with attachments, comments, and workspace info.
+Returns the latest version of an article with attachments, comments, versions list, and workspace info.
 
 **Response:**
 ```json
@@ -185,7 +185,7 @@ Creates a new article in a workspace with optional attachments.
 - `workspaceId`: Required; must reference an existing workspace
 
 ### `PUT /api/articles/:id`
-Updates an existing article.
+Updates an existing article. Creates a new version; previous versions stay read-only.
 
 **Request Body:**
 ```json
@@ -199,6 +199,9 @@ Updates an existing article.
 
 ### `DELETE /api/articles/:id`
 Deletes an article and its attachments.
+
+### `GET /api/articles/:id/versions/:version`
+Returns a specific version (read-only) of an article with its attachments.
 
 ### `GET /api/articles/:id/comments`
 List comments for an article (newest first).

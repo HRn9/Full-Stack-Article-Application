@@ -24,6 +24,10 @@ const App: React.FC = () => {
   const [newWorkspaceName, setNewWorkspaceName] = useState<string>('');
   const [workspaceLoading, setWorkspaceLoading] = useState<boolean>(false);
   const [workspaceMenuOpen, setWorkspaceMenuOpen] = useState<boolean>(false);
+  const [viewingVersion, setViewingVersion] = useState<number | null>(null);
+  const [versionsMeta, setVersionsMeta] = useState<
+    { id: string; version: number; title?: string; createdAt?: string }[]
+  >([]);
 
   const { notifications, isConnected, removeNotification } = useWebSocket();
 
@@ -49,6 +53,8 @@ const App: React.FC = () => {
   useEffect(() => {
     fetchArticles(selectedWorkspaceId || undefined);
     setSelectedArticle(null);
+    setViewingVersion(null);
+    setVersionsMeta([]);
     setView('list');
   }, [selectedWorkspaceId]);
 
@@ -73,6 +79,8 @@ const App: React.FC = () => {
     try {
       const article = await ArticleApi.getArticle(id);
       setSelectedArticle(article);
+      setViewingVersion(article.currentVersion ?? null);
+      setVersionsMeta(article.versions || []);
       setView('view');
     } catch (err) {
       const message =
@@ -145,6 +153,7 @@ const App: React.FC = () => {
       await fetchArticles(selectedWorkspaceId || undefined);
       setView('list');
       setSelectedArticle(null);
+      setViewingVersion(null);
       setError('');
     } catch (err) {
       const message =
@@ -156,6 +165,37 @@ const App: React.FC = () => {
   const handleEditArticle = (): void => {
     setView('edit');
     setError('');
+  };
+
+  const handleSelectVersion = async (version: number): Promise<void> => {
+    if (!selectedArticle) return;
+
+    // Latest version (go back to full fetch to refresh comments/meta)
+    if (
+      selectedArticle.currentVersion !== undefined &&
+      version === selectedArticle.currentVersion
+    ) {
+      await handleSelectArticle(selectedArticle.id);
+      return;
+    }
+
+    try {
+      const versioned = await ArticleApi.getArticleVersion(
+        selectedArticle.id,
+        version
+      );
+      setSelectedArticle((prev) => ({
+        ...versioned,
+        versions: versionsMeta,
+        comments: prev?.comments,
+      }));
+      setViewingVersion(version);
+      setError('');
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : 'Could not load version';
+      setError(message);
+    }
   };
 
   const handleCreateWorkspace = async (): Promise<void> => {
@@ -440,6 +480,10 @@ const App: React.FC = () => {
           ) : selectedArticle ? (
             <ArticleView
               article={selectedArticle}
+              versions={versionsMeta}
+              currentVersion={selectedArticle.currentVersion ?? null}
+              viewingVersion={viewingVersion}
+              onSelectVersion={handleSelectVersion}
               onBack={() => setView('list')}
               onEdit={handleEditArticle}
               onDelete={handleDeleteArticle}
