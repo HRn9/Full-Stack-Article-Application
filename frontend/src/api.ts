@@ -2,25 +2,59 @@ import type { Delta } from 'quill';
 import type { Article, ApiError, Attachment, Workspace, Comment } from './types';
 import { API_URL } from './config';
 
+const TOKEN_KEY = 'auth_token';
+
+export function getToken(): string | null {
+  return localStorage.getItem(TOKEN_KEY);
+}
+
+export function setToken(token: string): void {
+  localStorage.setItem(TOKEN_KEY, token);
+}
+
+export function clearToken(): void {
+  localStorage.removeItem(TOKEN_KEY);
+}
+
+function authHeaders(extra?: Record<string, string>) {
+  const token = getToken();
+  return {
+    ...(extra || {}),
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  };
+}
+
+async function handleAuthResponse<T>(response: Response): Promise<T> {
+  if (response.ok) return response.json();
+  if (response.status === 401) {
+    clearToken();
+    throw new Error('Unauthorized');
+  }
+  const error: ApiError = await response.json();
+  throw new Error(error.error || 'Request failed');
+}
+
 export class ArticleApi {
   static async listArticles(workspaceId?: string): Promise<Article[]> {
     const url =
       workspaceId !== undefined && workspaceId !== null && workspaceId !== ''
         ? `${API_URL}/articles?workspaceId=${encodeURIComponent(workspaceId)}`
         : `${API_URL}/articles`;
-    const response = await fetch(url);
-    if (!response.ok) {
-      const error: ApiError = await response.json();
-      throw new Error(error.error || 'Failed to fetch articles');
-    }
-    return response.json();
+    const response = await fetch(url, { headers: authHeaders() });
+    return handleAuthResponse<Article[]>(response);
   }
 
   static async getArticle(id: string): Promise<Article> {
-    const response = await fetch(`${API_URL}/articles/${id}`);
+    const response = await fetch(`${API_URL}/articles/${id}`, {
+      headers: authHeaders(),
+    });
     if (!response.ok) {
       if (response.status === 404) {
         throw new Error('Article not found');
+      }
+      if (response.status === 401) {
+        clearToken();
+        throw new Error('Unauthorized');
       }
       const error: ApiError = await response.json();
       throw new Error(error.error || 'Failed to fetch article');
@@ -51,7 +85,7 @@ export class ArticleApi {
 
     const response = await fetch(`${API_URL}/articles`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
       body: JSON.stringify({
         title,
         content,
@@ -75,7 +109,7 @@ export class ArticleApi {
   ): Promise<Article> {
     const response = await fetch(`${API_URL}/articles/${id}`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
       body: JSON.stringify({
         title,
         content,
@@ -86,6 +120,10 @@ export class ArticleApi {
     if (!response.ok) {
       if (response.status === 404) {
         throw new Error('Article not found');
+      }
+      if (response.status === 401) {
+        clearToken();
+        throw new Error('Unauthorized');
       }
       const error: ApiError = await response.json();
       throw new Error(error.error || 'Failed to update article');
@@ -98,11 +136,16 @@ export class ArticleApi {
     version: number
   ): Promise<Article> {
     const response = await fetch(
-      `${API_URL}/articles/${articleId}/versions/${version}`
+      `${API_URL}/articles/${articleId}/versions/${version}`,
+      { headers: authHeaders() }
     );
     if (!response.ok) {
       if (response.status === 404) {
         throw new Error('Version not found');
+      }
+      if (response.status === 401) {
+        clearToken();
+        throw new Error('Unauthorized');
       }
       const error: ApiError = await response.json();
       throw new Error(error.error || 'Failed to fetch article version');
@@ -125,10 +168,15 @@ export class ArticleApi {
   static async deleteArticle(id: string): Promise<void> {
     const response = await fetch(`${API_URL}/articles/${id}`, {
       method: 'DELETE',
+      headers: authHeaders(),
     });
     if (!response.ok) {
       if (response.status === 404) {
         throw new Error('Article not found');
+      }
+      if (response.status === 401) {
+        clearToken();
+        throw new Error('Unauthorized');
       }
       const error: ApiError = await response.json();
       throw new Error(error.error || 'Failed to delete article');
@@ -142,9 +190,14 @@ export class ArticleApi {
     const response = await fetch(`${API_URL}/upload`, {
       method: 'POST',
       body: formData,
+      headers: authHeaders(),
     });
 
     if (!response.ok) {
+      if (response.status === 401) {
+        clearToken();
+        throw new Error('Unauthorized');
+      }
       const error: ApiError = await response.json();
       throw new Error(error.error || 'Failed to upload file');
     }
@@ -155,11 +208,16 @@ export class ArticleApi {
   static async deleteAttachment(filename: string): Promise<void> {
     const response = await fetch(`${API_URL}/attachments/${filename}`, {
       method: 'DELETE',
+      headers: authHeaders(),
     });
 
     if (!response.ok) {
       if (response.status === 404) {
         throw new Error('Attachment not found');
+      }
+      if (response.status === 401) {
+        clearToken();
+        throw new Error('Unauthorized');
       }
       const error: ApiError = await response.json();
       throw new Error(error.error || 'Failed to delete attachment');
@@ -173,12 +231,10 @@ export class ArticleApi {
 
 export class WorkspaceApi {
   static async listWorkspaces(): Promise<Workspace[]> {
-    const response = await fetch(`${API_URL}/workspaces`);
-    if (!response.ok) {
-      const error: ApiError = await response.json();
-      throw new Error(error.error || 'Failed to fetch workspaces');
-    }
-    return response.json();
+    const response = await fetch(`${API_URL}/workspaces`, {
+      headers: authHeaders(),
+    });
+    return handleAuthResponse<Workspace[]>(response);
   }
 
   static async createWorkspace(
@@ -187,7 +243,7 @@ export class WorkspaceApi {
   ): Promise<Workspace> {
     const response = await fetch(`${API_URL}/workspaces`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
       body: JSON.stringify({ name, description }),
     });
     if (!response.ok) {
@@ -204,7 +260,7 @@ export class WorkspaceApi {
   ): Promise<Workspace> {
     const response = await fetch(`${API_URL}/workspaces/${id}`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
       body: JSON.stringify({ name, description }),
     });
 
@@ -222,6 +278,7 @@ export class WorkspaceApi {
   static async deleteWorkspace(id: string): Promise<void> {
     const response = await fetch(`${API_URL}/workspaces/${id}`, {
       method: 'DELETE',
+      headers: authHeaders(),
     });
 
     if (!response.ok) {
@@ -236,7 +293,9 @@ export class WorkspaceApi {
 
 export class CommentApi {
   static async listComments(articleId: string): Promise<Comment[]> {
-    const response = await fetch(`${API_URL}/articles/${articleId}/comments`);
+    const response = await fetch(`${API_URL}/articles/${articleId}/comments`, {
+      headers: authHeaders(),
+    });
     if (!response.ok) {
       const error: ApiError = await response.json();
       throw new Error(error.error || 'Failed to fetch comments');
@@ -251,7 +310,7 @@ export class CommentApi {
   ): Promise<Comment> {
     const response = await fetch(`${API_URL}/articles/${articleId}/comments`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
       body: JSON.stringify({ body, author }),
     });
 
@@ -273,7 +332,7 @@ export class CommentApi {
       `${API_URL}/articles/${articleId}/comments/${commentId}`,
       {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
         body: JSON.stringify({ body, author }),
       }
     );
@@ -295,7 +354,7 @@ export class CommentApi {
   ): Promise<void> {
     const response = await fetch(
       `${API_URL}/articles/${articleId}/comments/${commentId}`,
-      { method: 'DELETE' }
+      { method: 'DELETE', headers: authHeaders() }
     );
 
     if (!response.ok) {
@@ -305,5 +364,38 @@ export class CommentApi {
       const error: ApiError = await response.json();
       throw new Error(error.error || 'Failed to delete comment');
     }
+  }
+}
+
+export class AuthApi {
+  static async register(email: string, password: string): Promise<string> {
+    const response = await fetch(`${API_URL}/auth/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+    });
+    if (!response.ok) {
+      const error: ApiError = await response.json();
+      throw new Error(error.error || 'Failed to register');
+    }
+    const data: { token: string } = await response.json();
+    return data.token;
+  }
+
+  static async login(email: string, password: string): Promise<string> {
+    const response = await fetch(`${API_URL}/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+    });
+    if (!response.ok) {
+      if (response.status === 401) {
+        throw new Error('Invalid credentials');
+      }
+      const error: ApiError = await response.json();
+      throw new Error(error.error || 'Failed to login');
+    }
+    const data: { token: string } = await response.json();
+    return data.token;
   }
 }

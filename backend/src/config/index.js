@@ -27,6 +27,9 @@ const config = {
   DB_USER: process.env.DB_USER || 'postgres',
   DB_PASSWORD: process.env.DB_PASSWORD || 'postgres',
   DB_DIALECT: process.env.DB_DIALECT || 'postgres',
+
+  JWT_SECRET: process.env.JWT_SECRET || 'dev-secret-change-me',
+  JWT_EXPIRES_IN: process.env.JWT_EXPIRES_IN || '1h',
 };
 
 module.exports = config;
