@@ -3,6 +3,7 @@ import type { Article, ArticleVersionMeta } from '../types';
 import QuillReadOnly from './QuillReadOnly';
 import Attachments from './Attachments';
 import CommentsSection from './CommentsSection';
+import { useAuth } from '../auth/AuthContext';
 
 interface ArticleViewProps {
   article: Article;
@@ -40,8 +41,17 @@ const ArticleView: React.FC<ArticleViewProps> = ({
   onUpdateComment,
   onDeleteComment,
 }) => {
+  const { user } = useAuth();
   const [deleting, setDeleting] = useState<boolean>(false);
   const [deleteError, setDeleteError] = useState<string>('');
+
+  const canEdit = user && (
+    user.role === 'admin' || 
+    (article.creator && article.creator.id === user.id)
+  );
+
+  const canEditCurrentVersion = canEdit && 
+    (viewingVersion ?? currentVersion) === currentVersion;
 
   const handleDelete = async (): Promise<void> => {
     if (
@@ -100,27 +110,25 @@ const ArticleView: React.FC<ArticleViewProps> = ({
               </select>
             </div>
           )}
-          <button
-            onClick={onEdit}
-            className="btn-secondary"
-            disabled={
-              deleting || (viewingVersion ?? currentVersion) !== currentVersion
-            }
-            title={
-              (viewingVersion ?? currentVersion) !== currentVersion
-                ? 'Editing only allowed on latest version'
-                : 'Edit'
-            }
-          >
-            Edit
-          </button>
-          <button
-            onClick={handleDelete}
-            className="btn-danger"
-            disabled={deleting}
-          >
-            {deleting ? 'Deleting...' : 'Delete'}
-          </button>
+          {canEditCurrentVersion && canEdit && (
+            <button
+              onClick={onEdit}
+              className="btn-secondary"
+              disabled={deleting}
+              title="Edit"
+            >
+              Edit
+            </button>
+          )}
+          {canEdit && (
+            <button
+              onClick={handleDelete}
+              className="btn-danger"
+              disabled={deleting}
+            >
+              {deleting ? 'Deleting...' : 'Delete'}
+            </button>
+          )}
         </div>
       </div>
       {deleteError && <div className="error-message">{deleteError}</div>}

@@ -21,6 +21,7 @@ export interface Article {
   versions?: ArticleVersionMeta[];
   workspaceId: string;
   workspace?: Workspace;
+  creator?: User;
   comments?: Comment[];
 }
 
@@ -74,6 +75,15 @@ export interface Comment {
   articleId: string;
   author?: string | null;
   body: string;
+  createdAt: string;
+  updatedAt: string;
+  creatorId: string;
+}
+
+export interface User {
+  id: string;
+  email: string;
+  role: 'user' | 'admin';
   createdAt: string;
   updatedAt: string;
 }

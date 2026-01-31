@@ -8,6 +8,7 @@ import NotificationToast from '../components/NotificationToast';
 import { useWebSocket } from '../hooks/useWebSocket';
 import type { Delta } from 'quill';
 import { useAuth } from '../auth/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
 const ArticlesPage: React.FC = () => {
   const [view, setView] = useState<AppView>('list');
@@ -28,11 +29,16 @@ const ArticlesPage: React.FC = () => {
   >([]);
 
   const { notifications, isConnected, removeNotification } = useWebSocket();
-  const { logout } = useAuth();
+  const { logout, isAdmin } = useAuth();
+  const navigate = useNavigate();
 
   const handleLogout = useCallback(() => {
     logout();
   }, [logout]);
+
+  const handleNavigateToUsers = useCallback(() => {
+    navigate('/users');
+  }, [navigate]);
 
   const fetchWorkspaces = useCallback(async (): Promise<void> => {
     setWorkspaceLoading(true);
@@ -368,6 +374,14 @@ const ArticlesPage: React.FC = () => {
             >
               Create New
             </button>
+            {isAdmin && (
+              <button
+                className="nav-btn"
+                onClick={handleNavigateToUsers}
+              >
+                User Management
+              </button>
+            )}
           </nav>
           <div className="workspace-menu-wrapper">
             {workspaces.length > 0 && (

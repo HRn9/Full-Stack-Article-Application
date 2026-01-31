@@ -11,6 +11,7 @@ function signToken(user) {
     {
       sub: user.id,
       email: user.email,
+      role: user.role,
     },
     config.JWT_SECRET,
     { expiresIn: config.JWT_EXPIRES_IN }

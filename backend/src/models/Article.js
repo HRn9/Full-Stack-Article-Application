@@ -32,6 +32,12 @@ module.exports = (sequelize, DataTypes) => {
         as: 'attachments',
         onDelete: 'CASCADE',
       });
+
+      Article.belongsTo(models.User, {
+        foreignKey: 'creatorId',
+        as: 'creator',
+        onDelete: 'SET NULL',
+      });
     }
   }
 
@@ -69,6 +75,16 @@ module.exports = (sequelize, DataTypes) => {
       latestVersionId: {
         type: DataTypes.UUID,
         allowNull: true,
+      },
+      creatorId: {
+        type: DataTypes.UUID,
+        allowNull: true,
+        references: {
+          model: 'users',
+          key: 'id',
+        },
+        onDelete: 'SET NULL',
+        onUpdate: 'CASCADE',
       },
       workspaceId: {
         type: DataTypes.UUID,

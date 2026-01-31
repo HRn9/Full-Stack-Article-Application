@@ -8,6 +8,11 @@ module.exports = (sequelize, DataTypes) => {
         as: 'article',
         onDelete: 'CASCADE',
       });
+      Comment.belongsTo(models.User, {
+        foreignKey: 'creatorId',
+        as: 'creator',
+        onDelete: 'SET NULL',
+      });
     }
   }
 
@@ -48,6 +53,16 @@ module.exports = (sequelize, DataTypes) => {
             msg: 'Comment body cannot be empty',
           },
         },
+      },
+      creatorId: {
+        type: DataTypes.UUID,
+        allowNull: true,
+        references: {
+          model: 'users',
+          key: 'id',
+        },
+        onDelete: 'SET NULL',
+        onUpdate: 'CASCADE',
       },
       createdAt: {
         type: DataTypes.DATE,
