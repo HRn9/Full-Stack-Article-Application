@@ -371,6 +371,20 @@ export class CommentApi {
       throw new Error(error.error || 'Failed to delete comment');
     }
   }
+
+  static async exportArticlePDF(articleId: string): Promise<Blob> {
+    const response = await fetch(`${API_URL}/articles/${articleId}/export/pdf`, {
+      method: 'GET',
+      headers: authHeaders(),
+    });
+
+    if (!response.ok) {
+      const error: ApiError = await response.json();
+      throw new Error(error.error || 'Failed to export article to PDF');
+    }
+
+    return response.blob();
+  }
 }
 
 export class AuthApi {
