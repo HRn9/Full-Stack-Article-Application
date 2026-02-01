@@ -3,12 +3,6 @@ const { Model } = require('sequelize');
 module.exports = (sequelize, DataTypes) => {
   class Article extends Model {
     static associate(models) {
-      Article.hasMany(models.Attachment, {
-        foreignKey: 'articleId',
-        as: 'attachments',
-        onDelete: 'CASCADE',
-      });
-
       Article.belongsTo(models.Workspace, {
         foreignKey: 'workspaceId',
         as: 'workspace',
@@ -18,6 +12,24 @@ module.exports = (sequelize, DataTypes) => {
       Article.hasMany(models.Comment, {
         foreignKey: 'articleId',
         as: 'comments',
+        onDelete: 'CASCADE',
+      });
+
+      Article.hasMany(models.ArticleVersion, {
+        foreignKey: 'articleId',
+        as: 'versions',
+        onDelete: 'CASCADE',
+      });
+
+      Article.belongsTo(models.ArticleVersion, {
+        foreignKey: 'latestVersionId',
+        as: 'latestVersion',
+        onDelete: 'SET NULL',
+      });
+
+      Article.hasMany(models.Attachment, {
+        foreignKey: 'articleId',
+        as: 'attachments',
         onDelete: 'CASCADE',
       });
     }
@@ -48,6 +60,15 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.JSONB,
         allowNull: false,
         comment: 'Quill Delta format content',
+      },
+      currentVersion: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+        defaultValue: 1,
+      },
+      latestVersionId: {
+        type: DataTypes.UUID,
+        allowNull: true,
       },
       workspaceId: {
         type: DataTypes.UUID,

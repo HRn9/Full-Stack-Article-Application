@@ -1,15 +1,23 @@
 import React, { useState } from 'react';
-import type { Article } from '../types';
+import type { Article, ArticleVersionMeta } from '../types';
 import QuillReadOnly from './QuillReadOnly';
 import Attachments from './Attachments';
 import CommentsSection from './CommentsSection';
 
 interface ArticleViewProps {
   article: Article;
+  versions?: ArticleVersionMeta[];
+  currentVersion?: number | null;
+  viewingVersion?: number | null;
+  onSelectVersion?: (version: number) => void;
   onBack: () => void;
   onEdit: () => void;
   onDelete: () => Promise<void>;
-  onAddComment: (articleId: string, body: string, author?: string) => Promise<void>;
+  onAddComment: (
+    articleId: string,
+    body: string,
+    author?: string
+  ) => Promise<void>;
   onUpdateComment: (
     articleId: string,
     commentId: string,
@@ -21,6 +29,10 @@ interface ArticleViewProps {
 
 const ArticleView: React.FC<ArticleViewProps> = ({
   article,
+  versions = [],
+  currentVersion = null,
+  viewingVersion = null,
+  onSelectVersion,
   onBack,
   onEdit,
   onDelete,
@@ -53,6 +65,11 @@ const ArticleView: React.FC<ArticleViewProps> = ({
     }
   };
 
+  const isViewingOldVersion =
+    currentVersion !== null &&
+    viewingVersion !== null &&
+    viewingVersion !== currentVersion;
+
   return (
     <div className="article-view-container">
       <div className="article-view-header">
@@ -60,10 +77,40 @@ const ArticleView: React.FC<ArticleViewProps> = ({
           ← Back to Articles
         </button>
         <div className="article-actions">
+          {versions.length > 0 && (
+            <div className="version-selector">
+              <label htmlFor="version-select">Version:</label>
+              <select
+                id="version-select"
+                className="select-control"
+                value={viewingVersion ?? currentVersion ?? ''}
+                onChange={(e) => {
+                  const v = Number(e.target.value);
+                  if (onSelectVersion) onSelectVersion(v);
+                }}
+              >
+                {versions
+                  .sort((a, b) => b.version - a.version)
+                  .map((v) => (
+                    <option key={v.id} value={v.version}>
+                      v{v.version}{' '}
+                      {v.version === currentVersion ? '(latest)' : ''}
+                    </option>
+                  ))}
+              </select>
+            </div>
+          )}
           <button
             onClick={onEdit}
             className="btn-secondary"
-            disabled={deleting}
+            disabled={
+              deleting || (viewingVersion ?? currentVersion) !== currentVersion
+            }
+            title={
+              (viewingVersion ?? currentVersion) !== currentVersion
+                ? 'Editing only allowed on latest version'
+                : 'Edit'
+            }
           >
             Edit
           </button>
@@ -79,9 +126,19 @@ const ArticleView: React.FC<ArticleViewProps> = ({
       {deleteError && <div className="error-message">{deleteError}</div>}
       <article className="article-content">
         <h1>{article.title}</h1>
-        {article.workspace && (
-          <div className="workspace-badge">
-            Workspace: {article.workspace.name}
+        {(article.workspace || isViewingOldVersion) && (
+          <div className="badge-row">
+            {isViewingOldVersion && (
+              <span className="version-badge warning" role="status">
+                Viewing version v{viewingVersion} (latest is v{currentVersion}).
+                Read-only.
+              </span>
+            )}
+            {article.workspace && (
+              <span className="workspace-badge" role="status">
+                Workspace: {article.workspace.name}
+              </span>
+            )}
           </div>
         )}
         {article.attachments && article.attachments.length > 0 && (

@@ -110,6 +110,24 @@
     color: #2c4a9a;
 }
 
+.version-selector {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+}
+
+.version-badge {
+    display: inline-block;
+    padding: 8px 12px;
+    border-radius: 8px;
+    font-size: 13px;
+}
+
+.version-badge.warning {
+    background: #fff4e5;
+    color: #b06a00;
+}
+
 .workspace-panel {
     position: absolute;
     top: 120%;
@@ -147,7 +165,15 @@
     padding: 6px 10px;
     border-radius: 6px;
     font-size: 13px;
+}
+
+.badge-row {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
     margin-bottom: 10px;
+    padding: 8px 0;
 }
 
 .app-main {
@@ -274,6 +300,13 @@ button {
 
 .article-link small {
     color: #888;
+    font-size: 13px;
+}
+
+.article-meta {
+    display: flex;
+    gap: 10px;
+    color: #666;
     font-size: 13px;
 }
 

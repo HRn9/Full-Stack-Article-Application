@@ -1,5 +1,5 @@
 const express = require('express');
-const { Workspace, Article, Attachment } = require('../models');
+const { Workspace, Article, Attachment, ArticleVersion } = require('../models');
 const { deleteAttachmentFiles } = require('../utils/fileUtils');
 
 const router = express.Router();
@@ -109,7 +109,17 @@ router.delete('/:id', async (req, res) => {
         {
           model: Article,
           as: 'articles',
-          include: [{ model: Attachment, as: 'attachments' }],
+          include: [
+            {
+              model: Attachment,
+              as: 'attachments',
+            },
+            {
+              model: ArticleVersion,
+              as: 'versions',
+              include: [{ model: Attachment, as: 'attachments' }],
+            },
+          ],
         },
       ],
     });
@@ -119,7 +129,12 @@ router.delete('/:id', async (req, res) => {
     }
 
     const attachments =
-      workspace.articles?.flatMap((article) => article.attachments || []) || [];
+      workspace.articles?.flatMap((article) => {
+        const fromArticle = article.attachments || [];
+        const fromVersions =
+          article.versions?.flatMap((v) => v.attachments || []) || [];
+        return [...fromArticle, ...fromVersions];
+      }) || [];
 
     await workspace.destroy();
     await deleteAttachmentFiles(attachments);

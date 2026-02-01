@@ -3,10 +3,15 @@ const { Model } = require('sequelize');
 module.exports = (sequelize, DataTypes) => {
   class Attachment extends Model {
     static associate(models) {
-      // Define association with Article
       Attachment.belongsTo(models.Article, {
         foreignKey: 'articleId',
         as: 'article',
+        onDelete: 'CASCADE',
+      });
+
+      Attachment.belongsTo(models.ArticleVersion, {
+        foreignKey: 'articleVersionId',
+        as: 'articleVersion',
         onDelete: 'CASCADE',
       });
     }
@@ -34,6 +39,16 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.STRING(255),
         allowNull: false,
         comment: 'Unique filename stored on disk',
+      },
+      articleVersionId: {
+        type: DataTypes.UUID,
+        allowNull: false,
+        references: {
+          model: 'article_versions',
+          key: 'id',
+        },
+        onDelete: 'CASCADE',
+        onUpdate: 'CASCADE',
       },
       originalName: {
         type: DataTypes.STRING(255),
@@ -92,8 +107,7 @@ module.exports = (sequelize, DataTypes) => {
           fields: ['articleId'],
         },
         {
-          fields: ['filename'],
-          unique: true,
+          fields: ['articleVersionId'],
         },
       ],
     }

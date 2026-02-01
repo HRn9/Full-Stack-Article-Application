@@ -16,9 +16,28 @@ export interface Article {
   attachments?: Attachment[];
   attachmentCount?: number;
   commentCount?: number;
+  currentVersion?: number;
+  latestVersion?: ArticleVersion;
+  versions?: ArticleVersionMeta[];
   workspaceId: string;
   workspace?: Workspace;
   comments?: Comment[];
+}
+
+export interface ArticleVersion {
+  id: string;
+  version: number;
+  title: string;
+  content: Delta;
+  attachments?: Attachment[];
+}
+
+export interface ArticleVersionMeta {
+  id: string;
+  version: number;
+  title?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface ApiError {

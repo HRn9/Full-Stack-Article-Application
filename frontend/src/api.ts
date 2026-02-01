@@ -1,11 +1,5 @@
 import type { Delta } from 'quill';
-import type {
-  Article,
-  ApiError,
-  Attachment,
-  Workspace,
-  Comment,
-} from './types';
+import type { Article, ApiError, Attachment, Workspace, Comment } from './types';
 import { API_URL } from './config';
 
 export class ArticleApi {
@@ -31,7 +25,18 @@ export class ArticleApi {
       const error: ApiError = await response.json();
       throw new Error(error.error || 'Failed to fetch article');
     }
-    return response.json();
+    const data = await response.json();
+    return {
+      id: data.id,
+      workspaceId: data.workspaceId,
+      workspace: data.workspace,
+      currentVersion: data.currentVersion,
+      title: data.latestVersion?.title ?? data.title,
+      content: data.latestVersion?.content ?? data.content,
+      attachments: data.latestVersion?.attachments ?? data.attachments ?? [],
+      versions: data.versions,
+      comments: data.comments,
+    };
   }
 
   static async createArticle(
@@ -86,6 +91,35 @@ export class ArticleApi {
       throw new Error(error.error || 'Failed to update article');
     }
     return response.json();
+  }
+
+  static async getArticleVersion(
+    articleId: string,
+    version: number
+  ): Promise<Article> {
+    const response = await fetch(
+      `${API_URL}/articles/${articleId}/versions/${version}`
+    );
+    if (!response.ok) {
+      if (response.status === 404) {
+        throw new Error('Version not found');
+      }
+      const error: ApiError = await response.json();
+      throw new Error(error.error || 'Failed to fetch article version');
+    }
+
+    const data = await response.json();
+    const mapped: Article = {
+      id: data.id,
+      workspaceId: data.workspaceId,
+      workspace: data.workspace,
+      title: data.title,
+      content: data.content,
+      attachments: data.attachments || [],
+      currentVersion: data.latestVersion,
+    };
+
+    return mapped;
   }
 
   static async deleteArticle(id: string): Promise<void> {
