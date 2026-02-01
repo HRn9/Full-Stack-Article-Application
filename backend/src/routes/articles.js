@@ -7,6 +7,7 @@ const {
   Attachment,
   Workspace,
   Comment,
+  ArticleVersion,
   sequelize,
 } = require('../models');
 
@@ -21,9 +22,15 @@ router.get('/', async (req, res) => {
       where,
       include: [
         {
-          model: Attachment,
-          as: 'attachments',
-          attributes: ['id'],
+          model: ArticleVersion,
+          as: 'latestVersion',
+          include: [
+            {
+              model: Attachment,
+              as: 'attachments',
+              attributes: ['id'],
+            },
+          ],
         },
         {
           model: Comment,
@@ -36,11 +43,14 @@ router.get('/', async (req, res) => {
 
     const payload = articles.map((article) => ({
       id: article.id,
-      title: article.title,
-      preview: getPreview(article.content),
-      attachmentCount: article.attachments ? article.attachments.length : 0,
+      title: article.latestVersion?.title || article.title,
+      preview: getPreview(article.latestVersion?.content || article.content),
+      attachmentCount: article.latestVersion?.attachments
+        ? article.latestVersion.attachments.length
+        : 0,
       commentCount: article.comments ? article.comments.length : 0,
       workspaceId: article.workspaceId,
+      currentVersion: article.currentVersion,
     }));
 
     res.json(payload);
@@ -58,8 +68,16 @@ router.get('/:id', async (req, res) => {
     const article = await Article.findByPk(req.params.id, {
       include: [
         {
-          model: Attachment,
-          as: 'attachments',
+          model: ArticleVersion,
+          as: 'latestVersion',
+          include: [{ model: Attachment, as: 'attachments' }],
+        },
+        {
+          model: ArticleVersion,
+          as: 'versions',
+          attributes: ['id', 'version', 'title', 'createdAt', 'updatedAt'],
+          separate: true,
+          order: [['version', 'DESC']],
         },
         {
           model: Comment,
@@ -79,7 +97,16 @@ router.get('/:id', async (req, res) => {
       return res.status(404).json({ error: 'Article not found' });
     }
 
-    res.json(article);
+    res.json({
+      id: article.id,
+      workspaceId: article.workspaceId,
+      currentVersion: article.currentVersion,
+      latestVersionId: article.latestVersionId,
+      latestVersion: article.latestVersion,
+      versions: article.versions,
+      comments: article.comments,
+      workspace: article.workspace,
+    });
   } catch (err) {
     console.error('Error reading article:', err);
     res.status(500).json({ error: 'Failed to fetch article' });
@@ -105,9 +132,22 @@ router.post('/', validateArticle, async (req, res) => {
     }
 
     const article = await Article.create(
-      { title: title.trim(), content, workspaceId },
+      { title: title.trim(), content, workspaceId, currentVersion: 1 },
       { transaction }
     );
+
+    const version = await ArticleVersion.create(
+      {
+        articleId: article.id,
+        version: 1,
+        title: title.trim(),
+        content,
+      },
+      { transaction }
+    );
+
+    article.latestVersionId = version.id;
+    await article.save({ transaction });
 
     if (attachments && Array.isArray(attachments) && attachments.length > 0) {
       const attachmentsToCreate = attachments.map((attachment) => ({
@@ -117,24 +157,11 @@ router.post('/', validateArticle, async (req, res) => {
         size: attachment.size,
         url: attachment.url,
         articleId: article.id,
+        articleVersionId: version.id,
       }));
 
       await Attachment.bulkCreate(attachmentsToCreate, { transaction });
     }
-
-    const createdArticle = await Article.findByPk(article.id, {
-      include: [
-        { model: Attachment, as: 'attachments' },
-        {
-          model: Comment,
-          as: 'comments',
-          separate: true,
-          order: [['createdAt', 'DESC']],
-        },
-        { model: Workspace, as: 'workspace', attributes: ['id', 'name'] },
-      ],
-      transaction,
-    });
 
     await transaction.commit();
 
@@ -148,7 +175,24 @@ router.post('/', validateArticle, async (req, res) => {
       timestamp: new Date().toISOString(),
     });
 
-    res.status(201).json(createdArticle);
+    const createdArticle = await Article.findByPk(article.id, {
+      include: [
+        {
+          model: ArticleVersion,
+          as: 'latestVersion',
+          include: [{ model: Attachment, as: 'attachments' }],
+        },
+        { model: Workspace, as: 'workspace', attributes: ['id', 'name'] },
+      ],
+    });
+
+    res.status(201).json({
+      id: createdArticle.id,
+      workspaceId: createdArticle.workspaceId,
+      currentVersion: createdArticle.currentVersion,
+      latestVersion: createdArticle.latestVersion,
+      workspace: createdArticle.workspace,
+    });
   } catch (err) {
     await transaction.rollback();
     console.error('Error creating article:', err);
@@ -163,7 +207,6 @@ router.put('/:id', validateArticle, async (req, res) => {
     const { title, content, attachments, workspaceId } = req.body;
 
     const article = await Article.findByPk(id, {
-      include: [{ model: Attachment, as: 'attachments' }],
       transaction,
       lock: transaction.LOCK.UPDATE,
     });
@@ -182,61 +225,48 @@ router.put('/:id', validateArticle, async (req, res) => {
       article.workspaceId = workspaceId;
     }
 
-    article.title = title.trim();
-    article.content = content;
-    await article.save({ transaction });
+    const newVersionNumber = (article.currentVersion || 1) + 1;
+
+    const version = await ArticleVersion.create(
+      {
+        articleId: article.id,
+        version: newVersionNumber,
+        title: title.trim(),
+        content,
+      },
+      { transaction }
+    );
 
     const incomingAttachments = Array.isArray(attachments) ? attachments : [];
-    const incomingFilenames = new Set(
-      incomingAttachments.map((a) => a.filename)
-    );
-    const existingAttachments = article.attachments || [];
 
-    const attachmentsToRemove = existingAttachments.filter(
-      (attachment) => !incomingFilenames.has(attachment.filename)
-    );
-
-    if (attachmentsToRemove.length > 0) {
-      await Attachment.destroy({
-        where: {
-          id: attachmentsToRemove.map((a) => a.id),
-        },
-        transaction,
-      });
-    }
-
-    const existingFilenames = new Set(
-      existingAttachments.map((a) => a.filename)
-    );
-    const newAttachments = incomingAttachments.filter(
-      (attachment) => !existingFilenames.has(attachment.filename)
-    );
-
-    if (newAttachments.length > 0) {
-      const attachmentsToCreate = newAttachments.map((attachment) => ({
+    if (incomingAttachments.length > 0) {
+      const attachmentsToCreate = incomingAttachments.map((attachment) => ({
         filename: attachment.filename,
         originalName: attachment.originalName,
         mimetype: attachment.mimetype,
         size: attachment.size,
         url: attachment.url,
         articleId: article.id,
+        articleVersionId: version.id,
       }));
 
       await Attachment.bulkCreate(attachmentsToCreate, { transaction });
     }
 
-    await transaction.commit();
+    article.title = title.trim();
+    article.content = content;
+    article.currentVersion = newVersionNumber;
+    article.latestVersionId = version.id;
+    await article.save({ transaction });
 
-    await deleteAttachmentFiles(attachmentsToRemove);
+    await transaction.commit();
 
     const updatedArticle = await Article.findByPk(id, {
       include: [
-        { model: Attachment, as: 'attachments' },
         {
-          model: Comment,
-          as: 'comments',
-          separate: true,
-          order: [['createdAt', 'DESC']],
+          model: ArticleVersion,
+          as: 'latestVersion',
+          include: [{ model: Attachment, as: 'attachments' }],
         },
         { model: Workspace, as: 'workspace', attributes: ['id', 'name'] },
       ],
@@ -245,14 +275,20 @@ router.put('/:id', validateArticle, async (req, res) => {
     websocketManager.broadcastNotification({
       type: 'article_updated',
       articleId: id,
-      title: updatedArticle.title,
+      title: updatedArticle.latestVersion?.title || updatedArticle.title,
       workspaceId: updatedArticle.workspaceId,
       workspaceName: updatedArticle.workspace?.name,
-      message: `Article "${updatedArticle.title}" has been updated`,
+      message: `Article "${updatedArticle.latestVersion?.title || updatedArticle.title}" has been updated`,
       timestamp: new Date().toISOString(),
     });
 
-    res.json(updatedArticle);
+    res.json({
+      id: updatedArticle.id,
+      workspaceId: updatedArticle.workspaceId,
+      currentVersion: updatedArticle.currentVersion,
+      latestVersion: updatedArticle.latestVersion,
+      workspace: updatedArticle.workspace,
+    });
   } catch (err) {
     await transaction.rollback();
     console.error('Error updating article:', err);
@@ -267,7 +303,11 @@ router.delete('/:id', async (req, res) => {
 
     const article = await Article.findByPk(id, {
       include: [
-        { model: Attachment, as: 'attachments' },
+        {
+          model: ArticleVersion,
+          as: 'versions',
+          include: [{ model: Attachment, as: 'attachments' }],
+        },
         { model: Workspace, as: 'workspace', attributes: ['id', 'name'] },
       ],
       transaction,
@@ -279,11 +319,13 @@ router.delete('/:id', async (req, res) => {
       return res.status(404).json({ error: 'Article not found' });
     }
 
-    const attachments = article.attachments || [];
+    const attachments =
+      article.versions?.flatMap((v) => v.attachments || []) || [];
     const articleTitle = article.title;
 
     await Comment.destroy({ where: { articleId: id }, transaction });
     await Attachment.destroy({ where: { articleId: id }, transaction });
+    await ArticleVersion.destroy({ where: { articleId: id }, transaction });
     await article.destroy({ transaction });
 
     await transaction.commit();
@@ -305,6 +347,48 @@ router.delete('/:id', async (req, res) => {
     await transaction.rollback();
     console.error('Error deleting article:', err);
     res.status(500).json({ error: 'Failed to delete article' });
+  }
+});
+
+router.get('/:id/versions/:version', async (req, res) => {
+  try {
+    const article = await Article.findByPk(req.params.id, {
+      include: [{ model: Workspace, as: 'workspace', attributes: ['id', 'name'] }],
+    });
+
+    if (!article) {
+      return res.status(404).json({ error: 'Article not found' });
+    }
+
+    const versionNumber = parseInt(req.params.version, 10);
+    if (Number.isNaN(versionNumber)) {
+      return res.status(400).json({ error: 'Invalid version number' });
+    }
+
+    const version = await ArticleVersion.findOne({
+      where: { articleId: article.id, version: versionNumber },
+      include: [{ model: Attachment, as: 'attachments' }],
+      order: [['version', 'DESC']],
+    });
+
+    if (!version) {
+      return res.status(404).json({ error: 'Version not found' });
+    }
+
+    res.json({
+      id: article.id,
+      workspaceId: article.workspaceId,
+      version: version.version,
+      latestVersion: article.currentVersion,
+      isLatest: version.version === article.currentVersion,
+      title: version.title,
+      content: version.content,
+      attachments: version.attachments || [],
+      workspace: article.workspace,
+    });
+  } catch (err) {
+    console.error('Error fetching article version:', err);
+    res.status(500).json({ error: 'Failed to fetch article version' });
   }
 });
 
