@@ -4,6 +4,7 @@ import QuillReadOnly from './QuillReadOnly';
 import Attachments from './Attachments';
 import CommentsSection from './CommentsSection';
 import { useAuth } from '../auth/AuthContext';
+import { CommentApi } from '../api';
 
 interface ArticleViewProps {
   article: Article;
@@ -110,6 +111,28 @@ const ArticleView: React.FC<ArticleViewProps> = ({
               </select>
             </div>
           )}
+          <button
+            onClick={async () => {
+              try {
+                const pdfBlob = await CommentApi.exportArticlePDF(article.id);
+                const url = window.URL.createObjectURL(pdfBlob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = `${article.title.replace(/[^a-z0-9]/gi, '-').toLowerCase()}-export.pdf`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                window.URL.revokeObjectURL(url);
+              } catch (error) {
+                console.error('Error exporting PDF:', error);
+                alert('Failed to export PDF. Please try again.');
+              }
+            }}
+            className="btn-primary"
+            title="Export as PDF"
+          >
+            Export PDF
+          </button>
           {canEditCurrentVersion && canEdit && (
             <button
               onClick={onEdit}

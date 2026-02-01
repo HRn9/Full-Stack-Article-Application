@@ -10,6 +10,7 @@ const {
   ArticleVersion,
   sequelize,
 } = require('../models');
+const { generateArticlePDF } = require('../utils/pdfGenerator');
 const { Op } = require('sequelize');
 const router = express.Router();
 
@@ -121,7 +122,7 @@ router.get('/', async (req, res) => {
   try {
     const { workspaceId, search } = req.query;
     const where = workspaceId ? { workspaceId } : {};
-
+    console.log('Fetching articles with workspaceId:', workspaceId, 'and search:', search);
     // Build search conditions
     let searchWhere = {};
     let replacements = {};
@@ -644,5 +645,84 @@ router.delete(
     }
   }
 );
+
+// PDF Export endpoint
+router.get('/:id/export/pdf', async (req, res) => {
+  try {
+    const article = await Article.findByPk(req.params.id, {
+      include: [
+        {
+          model: ArticleVersion,
+          as: 'latestVersion',
+          include: [{ model: Attachment, as: 'attachments' }],
+        },
+        {
+          model: Comment,
+          as: 'comments',
+          include: [
+            {
+              model: require('../models').User,
+              as: 'creator',
+              attributes: ['id', 'email', 'role'],
+            },
+          ],
+        },
+        {
+          model: Workspace,
+          as: 'workspace',
+          attributes: ['id', 'name', 'description'],
+        },
+        {
+          model: require('../models').User,
+          as: 'creator',
+          attributes: ['id', 'email', 'role'],
+        },
+      ],
+    });
+
+    if (!article) {
+      return res.status(404).json({ error: 'Article not found' });
+    }
+
+    // Prepare article data for PDF generation
+    const articleData = {
+      id: article.id,
+      title: article.latestVersion?.title || article.title,
+      content: article.latestVersion?.content || article.content,
+      attachments: article.latestVersion?.attachments || [],
+      comments: article.comments || [],
+      workspace: article.workspace,
+      creator: article.creator,
+      currentVersion: article.currentVersion,
+      createdAt: article.createdAt,
+      updatedAt: article.updatedAt,
+    };
+
+    // Generate PDF
+    const pdfPath = await generateArticlePDF(articleData);
+
+    // Set headers for file download
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${articleData.title.replace(/[^a-z0-9]/gi, '-').toLowerCase()}-export.pdf"`);
+
+    // Stream the PDF file
+    const fileStream = require('fs').createReadStream(pdfPath);
+    fileStream.pipe(res);
+
+    // Clean up the temporary file after sending
+    fileStream.on('end', () => {
+      require('fs').unlinkSync(pdfPath);
+    });
+
+    fileStream.on('error', (err) => {
+      console.error('Error streaming PDF:', err);
+      res.status(500).json({ error: 'Failed to stream PDF' });
+    });
+
+  } catch (err) {
+    console.error('Error exporting article to PDF:', err);
+    res.status(500).json({ error: 'Failed to export article to PDF' });
+  }
+});
 
 module.exports = router;
