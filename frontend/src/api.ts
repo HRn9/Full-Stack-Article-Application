@@ -35,11 +35,16 @@ async function handleAuthResponse<T>(response: Response): Promise<T> {
 }
 
 export class ArticleApi {
-  static async listArticles(workspaceId?: string): Promise<Article[]> {
-    const url =
-      workspaceId !== undefined && workspaceId !== null && workspaceId !== ''
-        ? `${API_URL}/articles?workspaceId=${encodeURIComponent(workspaceId)}`
-        : `${API_URL}/articles`;
+  static async listArticles(workspaceId?: string, search?: string): Promise<Article[]> {
+    const params = new URLSearchParams();
+    if (workspaceId !== undefined && workspaceId !== null && workspaceId !== '') {
+      params.set('workspaceId', workspaceId);
+    }
+    if (search && search.trim()) {
+      params.set('search', search.trim());
+    }
+    const queryString = params.toString();
+    const url = `${API_URL}/articles${queryString ? `?${queryString}` : ''}`;
     const response = await fetch(url, { headers: authHeaders() });
     return handleAuthResponse<Article[]>(response);
   }

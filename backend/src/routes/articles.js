@@ -10,7 +10,7 @@ const {
   ArticleVersion,
   sequelize,
 } = require('../models');
-
+const { Op } = require('sequelize');
 const router = express.Router();
 
 // Middleware to check if user can edit an article
@@ -35,7 +35,9 @@ async function canEditArticle(req, res, next) {
     }
 
     if (article.creatorId !== userId) {
-      return res.status(403).json({ error: 'You can only edit articles you created' });
+      return res
+        .status(403)
+        .json({ error: 'You can only edit articles you created' });
     }
 
     next();
@@ -68,7 +70,9 @@ async function canEditComment(req, res, next) {
     }
 
     if (comment.creatorId !== userId) {
-      return res.status(403).json({ error: 'You can only edit comments you created' });
+      return res
+        .status(403)
+        .json({ error: 'You can only edit comments you created' });
     }
 
     next();
@@ -101,7 +105,9 @@ async function canDeleteComment(req, res, next) {
     }
 
     if (comment.creatorId !== userId) {
-      return res.status(403).json({ error: 'You can only delete comments you created' });
+      return res
+        .status(403)
+        .json({ error: 'You can only delete comments you created' });
     }
 
     next();
@@ -113,11 +119,29 @@ async function canDeleteComment(req, res, next) {
 
 router.get('/', async (req, res) => {
   try {
-    const { workspaceId } = req.query;
+    const { workspaceId, search } = req.query;
     const where = workspaceId ? { workspaceId } : {};
 
+    // Build search conditions
+    let searchWhere = {};
+    let replacements = {};
+    if (search && search.trim()) {
+      const searchPattern = `%${search.trim().toLowerCase()}%`;
+      searchWhere = {
+        [Op.or]: [
+          sequelize.literal(
+            `LOWER("latestVersion"."title"::text) LIKE :search`
+          ),
+          sequelize.literal(
+            `LOWER("latestVersion"."content"::text) LIKE :search`
+          ),
+        ],
+      };
+      replacements = { search: searchPattern };
+    }
+
     const articles = await Article.findAll({
-      where,
+      where: { ...where, ...searchWhere },
       include: [
         {
           model: ArticleVersion,
@@ -142,6 +166,7 @@ router.get('/', async (req, res) => {
         },
       ],
       order: [['createdAt', 'DESC']],
+      replacements,
     });
 
     const payload = articles.map((article) => ({
@@ -243,7 +268,13 @@ router.post('/', validateArticle, async (req, res) => {
     }
 
     const article = await Article.create(
-      { title: title.trim(), content, workspaceId, currentVersion: 1, creatorId: userId },
+      {
+        title: title.trim(),
+        content,
+        workspaceId,
+        currentVersion: 1,
+        creatorId: userId,
+      },
       { transaction }
     );
 
@@ -464,7 +495,9 @@ router.delete('/:id', async (req, res) => {
 router.get('/:id/versions/:version', async (req, res) => {
   try {
     const article = await Article.findByPk(req.params.id, {
-      include: [{ model: Workspace, as: 'workspace', attributes: ['id', 'name'] }],
+      include: [
+        { model: Workspace, as: 'workspace', attributes: ['id', 'name'] },
+      ],
     });
 
     if (!article) {
@@ -589,23 +622,27 @@ router.put('/:id/comments/:commentId', canEditComment, async (req, res) => {
   }
 });
 
-router.delete('/:id/comments/:commentId', canDeleteComment, async (req, res) => {
-  try {
-    const { id, commentId } = req.params;
+router.delete(
+  '/:id/comments/:commentId',
+  canDeleteComment,
+  async (req, res) => {
+    try {
+      const { id, commentId } = req.params;
 
-    const deleted = await Comment.destroy({
-      where: { id: commentId, articleId: id },
-    });
+      const deleted = await Comment.destroy({
+        where: { id: commentId, articleId: id },
+      });
 
-    if (!deleted) {
-      return res.status(404).json({ error: 'Comment not found' });
+      if (!deleted) {
+        return res.status(404).json({ error: 'Comment not found' });
+      }
+
+      res.status(204).send();
+    } catch (err) {
+      console.error('Error deleting comment:', err);
+      res.status(500).json({ error: 'Failed to delete comment' });
     }
-
-    res.status(204).send();
-  } catch (err) {
-    console.error('Error deleting comment:', err);
-    res.status(500).json({ error: 'Failed to delete comment' });
   }
-});
+);
 
 module.exports = router;

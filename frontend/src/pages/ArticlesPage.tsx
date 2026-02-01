@@ -18,7 +18,9 @@ const ArticlesPage: React.FC = () => {
   const [loadingArticle, setLoadingArticle] = useState<boolean>(false);
   const [error, setError] = useState<string>('');
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
-  const [selectedWorkspaceId, setSelectedWorkspaceId] = useState<string | null>(null);
+  const [selectedWorkspaceId, setSelectedWorkspaceId] = useState<string | null>(
+    null
+  );
   const [workspaceError, setWorkspaceError] = useState<string>('');
   const [newWorkspaceName, setNewWorkspaceName] = useState<string>('');
   const [workspaceLoading, setWorkspaceLoading] = useState<boolean>(false);
@@ -27,6 +29,7 @@ const ArticlesPage: React.FC = () => {
   const [versionsMeta, setVersionsMeta] = useState<
     { id: string; version: number; title?: string; createdAt?: string }[]
   >([]);
+  const [search, setSearch] = useState<string>('');
 
   const { notifications, isConnected, removeNotification } = useWebSocket();
   const { logout, isAdmin } = useAuth();
@@ -47,7 +50,8 @@ const ArticlesPage: React.FC = () => {
       const data = await WorkspaceApi.listWorkspaces();
       setWorkspaces(data);
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Could not load workspaces';
+      const message =
+        err instanceof Error ? err.message : 'Could not load workspaces';
       setWorkspaceError(message);
       if (message === 'Unauthorized') {
         handleLogout();
@@ -62,14 +66,15 @@ const ArticlesPage: React.FC = () => {
   }, [fetchWorkspaces]);
 
   const fetchArticles = useCallback(
-    async (workspaceId?: string): Promise<void> => {
+    async (workspaceId?: string, searchQuery?: string): Promise<void> => {
       setLoading(true);
       setError('');
       try {
-        const data = await ArticleApi.listArticles(workspaceId);
+        const data = await ArticleApi.listArticles(workspaceId, searchQuery);
         setArticles(data);
       } catch (err) {
-        const message = err instanceof Error ? err.message : 'Could not load articles';
+        const message =
+          err instanceof Error ? err.message : 'Could not load articles';
         setError(`${message}. Check if backend is running.`);
         if (message === 'Unauthorized') {
           handleLogout();
@@ -82,12 +87,20 @@ const ArticlesPage: React.FC = () => {
   );
 
   useEffect(() => {
-    fetchArticles(selectedWorkspaceId || undefined);
+    fetchArticles(selectedWorkspaceId || undefined, search);
     setSelectedArticle(null);
     setViewingVersion(null);
     setVersionsMeta([]);
     setView('list');
   }, [selectedWorkspaceId, fetchArticles]);
+
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      fetchArticles(selectedWorkspaceId || undefined, search);
+    }, 300);
+
+    return () => clearTimeout(timeout);
+  }, [search, fetchArticles]);
 
   const handleSelectArticle = async (id: string): Promise<void> => {
     setLoadingArticle(true);
@@ -99,7 +112,8 @@ const ArticlesPage: React.FC = () => {
       setVersionsMeta(article.versions || []);
       setView('view');
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Could not load article';
+      const message =
+        err instanceof Error ? err.message : 'Could not load article';
       setError(message);
       if (message === 'Unauthorized') {
         handleLogout();
@@ -122,7 +136,8 @@ const ArticlesPage: React.FC = () => {
       setView('list');
       setError('');
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to create article';
+      const message =
+        err instanceof Error ? err.message : 'Failed to create article';
       setError(message);
       if (message === 'Unauthorized') {
         handleLogout();
@@ -140,7 +155,13 @@ const ArticlesPage: React.FC = () => {
     if (!selectedArticle) return;
 
     try {
-      await ArticleApi.updateArticle(selectedArticle.id, title, content, attachments, workspaceId);
+      await ArticleApi.updateArticle(
+        selectedArticle.id,
+        title,
+        content,
+        attachments,
+        workspaceId
+      );
       const targetWorkspace = workspaceId || selectedWorkspaceId || null;
       if (targetWorkspace) {
         await fetchArticles(targetWorkspace);
@@ -152,7 +173,8 @@ const ArticlesPage: React.FC = () => {
       setSelectedArticle(null);
       setError('');
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to update article';
+      const message =
+        err instanceof Error ? err.message : 'Failed to update article';
       setError(message);
       if (message === 'Unauthorized') {
         handleLogout();
@@ -172,7 +194,8 @@ const ArticlesPage: React.FC = () => {
       setViewingVersion(null);
       setError('');
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to delete article';
+      const message =
+        err instanceof Error ? err.message : 'Failed to delete article';
       setError(message);
       if (message === 'Unauthorized') {
         handleLogout();
@@ -188,13 +211,19 @@ const ArticlesPage: React.FC = () => {
   const handleSelectVersion = async (version: number): Promise<void> => {
     if (!selectedArticle) return;
 
-    if (selectedArticle.currentVersion !== undefined && version === selectedArticle.currentVersion) {
+    if (
+      selectedArticle.currentVersion !== undefined &&
+      version === selectedArticle.currentVersion
+    ) {
       await handleSelectArticle(selectedArticle.id);
       return;
     }
 
     try {
-      const versioned = await ArticleApi.getArticleVersion(selectedArticle.id, version);
+      const versioned = await ArticleApi.getArticleVersion(
+        selectedArticle.id,
+        version
+      );
       setSelectedArticle((prev) => ({
         ...versioned,
         versions: versionsMeta,
@@ -203,7 +232,8 @@ const ArticlesPage: React.FC = () => {
       setViewingVersion(version);
       setError('');
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Could not load version';
+      const message =
+        err instanceof Error ? err.message : 'Could not load version';
       setError(message);
       if (message === 'Unauthorized') {
         handleLogout();
@@ -218,13 +248,16 @@ const ArticlesPage: React.FC = () => {
     }
 
     try {
-      const workspace = await WorkspaceApi.createWorkspace(newWorkspaceName.trim());
+      const workspace = await WorkspaceApi.createWorkspace(
+        newWorkspaceName.trim()
+      );
       const updated = [...workspaces, workspace];
       setWorkspaces(updated);
       setNewWorkspaceName('');
       setWorkspaceError('');
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to create workspace';
+      const message =
+        err instanceof Error ? err.message : 'Failed to create workspace';
       setWorkspaceError(message);
       if (message === 'Unauthorized') {
         handleLogout();
@@ -235,7 +268,10 @@ const ArticlesPage: React.FC = () => {
   const handleRenameWorkspace = async (): Promise<void> => {
     if (!selectedWorkspaceId) return;
     const current = workspaces.find((w) => w.id === selectedWorkspaceId);
-    const nextName = window.prompt('Enter new workspace name', current?.name || '');
+    const nextName = window.prompt(
+      'Enter new workspace name',
+      current?.name || ''
+    );
     if (!nextName || !nextName.trim()) return;
 
     try {
@@ -244,10 +280,13 @@ const ArticlesPage: React.FC = () => {
         nextName.trim(),
         current?.description
       );
-      setWorkspaces((prev) => prev.map((w) => (w.id === updated.id ? updated : w)));
+      setWorkspaces((prev) =>
+        prev.map((w) => (w.id === updated.id ? updated : w))
+      );
       setWorkspaceError('');
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to rename workspace';
+      const message =
+        err instanceof Error ? err.message : 'Failed to rename workspace';
       setWorkspaceError(message);
       if (message === 'Unauthorized') {
         handleLogout();
@@ -277,7 +316,8 @@ const ArticlesPage: React.FC = () => {
       setView('list');
       setWorkspaceError('');
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to delete workspace';
+      const message =
+        err instanceof Error ? err.message : 'Failed to delete workspace';
       setWorkspaceError(message);
       if (message === 'Unauthorized') {
         handleLogout();
@@ -285,7 +325,11 @@ const ArticlesPage: React.FC = () => {
     }
   };
 
-  const handleAddComment = async (articleId: string, body: string, author?: string): Promise<void> => {
+  const handleAddComment = async (
+    articleId: string,
+    body: string,
+    author?: string
+  ): Promise<void> => {
     try {
       const comment = await CommentApi.createComment(articleId, body, author);
       setSelectedArticle((prev) =>
@@ -297,7 +341,8 @@ const ArticlesPage: React.FC = () => {
           : prev
       );
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to add comment';
+      const message =
+        err instanceof Error ? err.message : 'Failed to add comment';
       setError(message);
       if (message === 'Unauthorized') {
         handleLogout();
@@ -312,7 +357,12 @@ const ArticlesPage: React.FC = () => {
     author?: string
   ): Promise<void> => {
     try {
-      const updated = await CommentApi.updateComment(articleId, commentId, body, author);
+      const updated = await CommentApi.updateComment(
+        articleId,
+        commentId,
+        body,
+        author
+      );
 
       setSelectedArticle((prev) =>
         prev
@@ -325,7 +375,8 @@ const ArticlesPage: React.FC = () => {
           : prev
       );
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to update comment';
+      const message =
+        err instanceof Error ? err.message : 'Failed to update comment';
       setError(message);
       if (message === 'Unauthorized') {
         handleLogout();
@@ -333,19 +384,25 @@ const ArticlesPage: React.FC = () => {
     }
   };
 
-  const handleDeleteComment = async (articleId: string, commentId: string): Promise<void> => {
+  const handleDeleteComment = async (
+    articleId: string,
+    commentId: string
+  ): Promise<void> => {
     try {
       await CommentApi.deleteComment(articleId, commentId);
       setSelectedArticle((prev) =>
         prev
           ? {
               ...prev,
-              comments: (prev.comments || []).filter((comment) => comment.id !== commentId),
+              comments: (prev.comments || []).filter(
+                (comment) => comment.id !== commentId
+              ),
             }
           : prev
       );
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to delete comment';
+      const message =
+        err instanceof Error ? err.message : 'Failed to delete comment';
       setError(message);
       if (message === 'Unauthorized') {
         handleLogout();
@@ -358,13 +415,21 @@ const ArticlesPage: React.FC = () => {
       <header className="app-header">
         <h1>📝 Article Manager</h1>
         <div className="header-right">
-          <div className={`ws-status ${isConnected ? 'connected' : 'disconnected'}`}>
-            <span className="ws-indicator" title={isConnected ? 'Connected' : 'Disconnected'}>
+          <div
+            className={`ws-status ${isConnected ? 'connected' : 'disconnected'}`}
+          >
+            <span
+              className="ws-indicator"
+              title={isConnected ? 'Connected' : 'Disconnected'}
+            >
               {isConnected ? '🟢' : '🔴'}
             </span>
           </div>
           <nav className="nav">
-            <button className={`nav-btn ${view === 'list' ? 'active' : ''}`} onClick={() => setView('list')}>
+            <button
+              className={`nav-btn ${view === 'list' ? 'active' : ''}`}
+              onClick={() => setView('list')}
+            >
               Articles
             </button>
             <button
@@ -375,10 +440,7 @@ const ArticlesPage: React.FC = () => {
               Create New
             </button>
             {isAdmin && (
-              <button
-                className="nav-btn"
-                onClick={handleNavigateToUsers}
-              >
+              <button className="nav-btn" onClick={handleNavigateToUsers}>
                 User Management
               </button>
             )}
@@ -388,7 +450,8 @@ const ArticlesPage: React.FC = () => {
               <span className="workspace-current" title="Current workspace">
                 <span className="workspace-dot">●</span>
                 {selectedWorkspaceId
-                  ? workspaces.find((w) => w.id === selectedWorkspaceId)?.name || 'Workspace'
+                  ? workspaces.find((w) => w.id === selectedWorkspaceId)
+                      ?.name || 'Workspace'
                   : 'All workspaces'}
               </span>
             )}
@@ -400,9 +463,14 @@ const ArticlesPage: React.FC = () => {
             >
               ⚙️
             </button>
-            <button className="icon-button" onClick={handleLogout} title="Logout" aria-label="Logout">
-            🚪
-          </button>
+            <button
+              className="icon-button"
+              onClick={handleLogout}
+              title="Logout"
+              aria-label="Logout"
+            >
+              🚪
+            </button>
             {workspaceMenuOpen && (
               <div className="workspace-panel">
                 <div className="workspace-row">
@@ -430,10 +498,18 @@ const ArticlesPage: React.FC = () => {
                   </select>
                 </div>
                 <div className="workspace-row">
-                  <button className="btn-secondary" onClick={handleRenameWorkspace} disabled={!selectedWorkspaceId}>
+                  <button
+                    className="btn-secondary"
+                    onClick={handleRenameWorkspace}
+                    disabled={!selectedWorkspaceId}
+                  >
                     Rename
                   </button>
-                  <button className="btn-danger" onClick={handleDeleteWorkspace} disabled={!selectedWorkspaceId}>
+                  <button
+                    className="btn-danger"
+                    onClick={handleDeleteWorkspace}
+                    disabled={!selectedWorkspaceId}
+                  >
                     Delete
                   </button>
                 </div>
@@ -444,11 +520,16 @@ const ArticlesPage: React.FC = () => {
                     onChange={(e) => setNewWorkspaceName(e.target.value)}
                     placeholder="New workspace name"
                   />
-                  <button className="btn-primary" onClick={handleCreateWorkspace}>
+                  <button
+                    className="btn-primary"
+                    onClick={handleCreateWorkspace}
+                  >
                     + Add
                   </button>
                 </div>
-                {workspaceError && <div className="error-banner">{workspaceError}</div>}
+                {workspaceError && (
+                  <div className="error-banner">{workspaceError}</div>
+                )}
               </div>
             )}
           </div>
@@ -459,12 +540,35 @@ const ArticlesPage: React.FC = () => {
         {error && <div className="error-banner">{error}</div>}
 
         {view === 'list' && (
-          <ArticleList
-            articles={articles}
-            loading={loading}
-            onSelectArticle={handleSelectArticle}
-            onRefresh={() => fetchArticles(selectedWorkspaceId || undefined)}
-          />
+          <>
+            <div className="articles-toolbar">
+              <input
+                type="text"
+                placeholder="🔍 Search articles..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="search-input"
+              />
+              {search && (
+                <button
+                  className="clear-search"
+                  onClick={() => setSearch('')}
+                  title="Clear search"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+
+            <ArticleList
+              articles={articles}
+              loading={loading}
+              onSelectArticle={handleSelectArticle}
+              onRefresh={() =>
+                fetchArticles(selectedWorkspaceId || undefined, search)
+              }
+            />
+          </>
         )}
 
         {view === 'view' &&
@@ -509,11 +613,12 @@ const ArticlesPage: React.FC = () => {
         )}
       </main>
 
-      <NotificationToast notifications={notifications} onRemove={removeNotification} />
+      <NotificationToast
+        notifications={notifications}
+        onRemove={removeNotification}
+      />
     </div>
   );
 };
 
 export default ArticlesPage;
-
-
