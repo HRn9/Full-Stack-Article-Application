@@ -13,6 +13,104 @@ const {
 
 const router = express.Router();
 
+// Middleware to check if user can edit an article
+async function canEditArticle(req, res, next) {
+  try {
+    const articleId = req.params.id;
+    const userId = req.user.id;
+    const userRole = req.user.role;
+
+    // Admins can edit any article
+    if (userRole === 'admin') {
+      return next();
+    }
+
+    // Check if user is the creator of the article
+    const article = await Article.findByPk(articleId, {
+      attributes: ['id', 'creatorId'],
+    });
+
+    if (!article) {
+      return res.status(404).json({ error: 'Article not found' });
+    }
+
+    if (article.creatorId !== userId) {
+      return res.status(403).json({ error: 'You can only edit articles you created' });
+    }
+
+    next();
+  } catch (err) {
+    console.error('Error checking article permissions:', err);
+    res.status(500).json({ error: 'Failed to check permissions' });
+  }
+}
+
+// Middleware to check if user can edit a comment
+async function canEditComment(req, res, next) {
+  try {
+    const { id, commentId } = req.params;
+    const userId = req.user.id;
+    const userRole = req.user.role;
+
+    // Admins can edit any comment
+    if (userRole === 'admin') {
+      return next();
+    }
+
+    // Check if user is the creator of the comment
+    const comment = await Comment.findOne({
+      where: { id: commentId, articleId: id },
+      attributes: ['id', 'creatorId'],
+    });
+
+    if (!comment) {
+      return res.status(404).json({ error: 'Comment not found' });
+    }
+
+    if (comment.creatorId !== userId) {
+      return res.status(403).json({ error: 'You can only edit comments you created' });
+    }
+
+    next();
+  } catch (err) {
+    console.error('Error checking comment permissions:', err);
+    res.status(500).json({ error: 'Failed to check permissions' });
+  }
+}
+
+// Middleware to check if user can delete a comment
+async function canDeleteComment(req, res, next) {
+  try {
+    const { id, commentId } = req.params;
+    const userId = req.user.id;
+    const userRole = req.user.role;
+
+    // Admins can delete any comment
+    if (userRole === 'admin') {
+      return next();
+    }
+
+    // Check if user is the creator of the comment
+    const comment = await Comment.findOne({
+      where: { id: commentId, articleId: id },
+      attributes: ['id', 'creatorId'],
+    });
+
+    if (!comment) {
+      return res.status(404).json({ error: 'Comment not found' });
+    }
+
+    if (comment.creatorId !== userId) {
+      return res.status(403).json({ error: 'You can only delete comments you created' });
+    }
+
+    next();
+  } catch (err) {
+    console.error('Error checking comment permissions:', err);
+    res.status(500).json({ error: 'Failed to check permissions' });
+  }
+}
+
 router.get('/', async (req, res) => {
   try {
     const { workspaceId } = req.query;
@@ -37,6 +135,11 @@ router.get('/', async (req, res) => {
           as: 'comments',
           attributes: ['id'],
         },
+        {
+          model: require('../models').User,
+          as: 'creator',
+          attributes: ['id', 'email', 'role'],
+        },
       ],
       order: [['createdAt', 'DESC']],
     });
@@ -51,6 +154,7 @@ router.get('/', async (req, res) => {
       commentCount: article.comments ? article.comments.length : 0,
       workspaceId: article.workspaceId,
       currentVersion: article.currentVersion,
+      creator: article.creator,
     }));
 
     res.json(payload);
@@ -90,6 +194,11 @@ router.get('/:id', async (req, res) => {
           as: 'workspace',
           attributes: ['id', 'name', 'description'],
         },
+        {
+          model: require('../models').User,
+          as: 'creator',
+          attributes: ['id', 'email', 'role'],
+        },
       ],
     });
 
@@ -106,6 +215,7 @@ router.get('/:id', async (req, res) => {
       versions: article.versions,
       comments: article.comments,
       workspace: article.workspace,
+      creator: article.creator,
     });
   } catch (err) {
     console.error('Error reading article:', err);
@@ -117,6 +227,7 @@ router.post('/', validateArticle, async (req, res) => {
   const transaction = await sequelize.transaction();
   try {
     const { title, content, attachments, workspaceId } = req.body;
+    const userId = req.user.id;
 
     if (!workspaceId) {
       await transaction.rollback();
@@ -132,7 +243,7 @@ router.post('/', validateArticle, async (req, res) => {
     }
 
     const article = await Article.create(
-      { title: title.trim(), content, workspaceId, currentVersion: 1 },
+      { title: title.trim(), content, workspaceId, currentVersion: 1, creatorId: userId },
       { transaction }
     );
 
@@ -200,7 +311,7 @@ router.post('/', validateArticle, async (req, res) => {
   }
 });
 
-router.put('/:id', validateArticle, async (req, res) => {
+router.put('/:id', validateArticle, canEditArticle, async (req, res) => {
   const transaction = await sequelize.transaction();
   try {
     const id = req.params.id;
@@ -401,6 +512,13 @@ router.get('/:id/comments', async (req, res) => {
 
     const comments = await Comment.findAll({
       where: { articleId: req.params.id },
+      include: [
+        {
+          model: require('../models').User,
+          as: 'creator',
+          attributes: ['id', 'email', 'role'],
+        },
+      ],
       order: [['createdAt', 'DESC']],
     });
 
@@ -427,6 +545,7 @@ router.post('/:id/comments', async (req, res) => {
       articleId: req.params.id,
       author: author?.trim() || 'Anonymous',
       body: body.trim(),
+      creatorId: req.user.id,
     });
 
     res.status(201).json(comment);
@@ -436,7 +555,7 @@ router.post('/:id/comments', async (req, res) => {
   }
 });
 
-router.put('/:id/comments/:commentId', async (req, res) => {
+router.put('/:id/comments/:commentId', canEditComment, async (req, res) => {
   try {
     const { id, commentId } = req.params;
     const { author, body } = req.body;
@@ -470,7 +589,7 @@ router.put('/:id/comments/:commentId', async (req, res) => {
   }
 });
 
-router.delete('/:id/comments/:commentId', async (req, res) => {
+router.delete('/:id/comments/:commentId', canDeleteComment, async (req, res) => {
   try {
     const { id, commentId } = req.params;
 

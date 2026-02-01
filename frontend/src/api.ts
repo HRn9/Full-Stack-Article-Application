@@ -1,5 +1,5 @@
 import type { Delta } from 'quill';
-import type { Article, ApiError, Attachment, Workspace, Comment } from './types';
+import type { Article, ApiError, Attachment, Workspace, Comment, User } from './types';
 import { API_URL } from './config';
 
 const TOKEN_KEY = 'auth_token';
@@ -70,6 +70,7 @@ export class ArticleApi {
       attachments: data.latestVersion?.attachments ?? data.attachments ?? [],
       versions: data.versions,
       comments: data.comments,
+      creator: data.creator
     };
   }
 
@@ -397,5 +398,44 @@ export class AuthApi {
     }
     const data: { token: string } = await response.json();
     return data.token;
+  }
+}
+
+export class UserApi {
+  static async listUsers(): Promise<User[]> {
+    const response = await fetch(`${API_URL}/users`, {
+      headers: authHeaders(),
+    });
+    return handleAuthResponse<User[]>(response);
+  }
+
+  static async updateUserRole(id: string, role: 'user' | 'admin'): Promise<User> {
+    const response = await fetch(`${API_URL}/users/${id}/role`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify({ role }),
+    });
+    if (!response.ok) {
+      const error: ApiError = await response.json();
+      throw new Error(error.error || 'Failed to update user role');
+    }
+    return response.json();
+  }
+
+  static async deleteUser(id: string): Promise<void> {
+    const response = await fetch(`${API_URL}/users/${id}`, {
+      method: 'DELETE',
+      headers: authHeaders(),
+    });
+    if (!response.ok) {
+      if (response.status === 404) {
+        throw new Error('User not found');
+      }
+      if (response.status === 400) {
+        throw new Error('Cannot delete yourself');
+      }
+      const error: ApiError = await response.json();
+      throw new Error(error.error || 'Failed to delete user');
+    }
   }
 }

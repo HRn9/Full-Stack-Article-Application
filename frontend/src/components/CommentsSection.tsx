@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import type { Comment } from '../types';
+import { useAuth } from '../auth/AuthContext';
 
 interface CommentsSectionProps {
   articleId: string;
@@ -21,10 +22,17 @@ const CommentsSection: React.FC<CommentsSectionProps> = ({
   onUpdate,
   onDelete,
 }) => {
+  const { user } = useAuth();
   const [author, setAuthor] = useState<string>('');
   const [body, setBody] = useState<string>('');
   const [error, setError] = useState<string>('');
   const [saving, setSaving] = useState<boolean>(false);
+
+  const canEditComment = (comment: Comment) => {
+    if (!user) return false;
+    return user.role === 'admin' || 
+           (comment.creatorId === user.id);
+  };
 
   const handleAdd = async () => {
     if (!body.trim()) {
@@ -115,24 +123,28 @@ const CommentsSection: React.FC<CommentsSectionProps> = ({
         {comments.map((comment) => (
           <div key={comment.id} className="comment-item">
             <div className="comment-actions">
-              <button
-                type="button"
-                className="comment-action-btn"
-                onClick={() => handleUpdate(comment)}
-                title="Edit comment"
-                aria-label="Edit comment"
-              >
-                ✏️
-              </button>
-              <button
-                type="button"
-                className="comment-action-btn"
-                onClick={() => handleDelete(comment)}
-                title="Delete comment"
-                aria-label="Delete comment"
-              >
-                ❌
-              </button>
+              {canEditComment(comment) && (
+                <button
+                  type="button"
+                  className="comment-action-btn"
+                  onClick={() => handleUpdate(comment)}
+                  title="Edit comment"
+                  aria-label="Edit comment"
+                >
+                  ✏️
+                </button>
+              )}
+              {canEditComment(comment) && (
+                <button
+                  type="button"
+                  className="comment-action-btn"
+                  onClick={() => handleDelete(comment)}
+                  title="Delete comment"
+                  aria-label="Delete comment"
+                >
+                  ❌
+                </button>
+              )}
             </div>
             <div className="comment-meta">
               <strong>{comment.author || 'Anonymous'}</strong>
