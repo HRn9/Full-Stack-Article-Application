@@ -1,7 +1,7 @@
 import React, { useRef, useEffect, useState } from 'react';
 import Quill, { Delta } from 'quill';
 import 'quill/dist/quill.snow.css';
-import type { Article, Attachment } from '../types';
+import type { Article, Attachment, Workspace } from '../types';
 import Attachments from './Attachments';
 import { ArticleApi } from '../api';
 
@@ -10,20 +10,28 @@ interface ArticleFormProps {
   onSubmit: (
     title: string,
     content: Delta,
-    attachments: Attachment[]
+    attachments: Attachment[],
+    workspaceId: string
   ) => Promise<void>;
   onCancel: () => void;
+  workspaces: Workspace[];
+  workspaceId?: string;
 }
 
 const ArticleForm: React.FC<ArticleFormProps> = ({
   article,
   onSubmit,
   onCancel,
+  workspaces,
+  workspaceId: workspaceIdProp,
 }) => {
   const [title, setTitle] = useState<string>(article?.title || '');
   const [content, setContent] = useState<Delta | undefined>(article?.content);
   const [attachments, setAttachments] = useState<Attachment[]>(
     article?.attachments || []
+  );
+  const [workspaceId, setWorkspaceId] = useState<string>(
+    article?.workspaceId || workspaceIdProp || ''
   );
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
   const [submitting, setSubmitting] = useState<boolean>(false);
@@ -68,14 +76,22 @@ const ArticleForm: React.FC<ArticleFormProps> = ({
       setTitle(article.title);
       setAttachments(article.attachments || []);
       setPendingFiles([]);
+      setWorkspaceId(article.workspaceId || workspaceIdProp || '');
     } else if (quillRef.current && !article) {
       quillRef.current.setText('');
       setContent(undefined);
       setTitle('');
       setAttachments([]);
       setPendingFiles([]);
+      setWorkspaceId(workspaceIdProp || '');
     }
-  }, [article]);
+  }, [article, workspaceIdProp]);
+
+  useEffect(() => {
+    if (!workspaceId && workspaces.length > 0) {
+      setWorkspaceId(workspaceIdProp || workspaces[0].id);
+    }
+  }, [workspaceId, workspaceIdProp, workspaces]);
 
   const handleSubmit = async (
     e: React.FormEvent<HTMLFormElement>
@@ -91,6 +107,11 @@ const ArticleForm: React.FC<ArticleFormProps> = ({
 
     if (!content) {
       setError('Content is required');
+      return;
+    }
+
+    if (!workspaceId) {
+      setError('Workspace is required');
       return;
     }
 
@@ -125,11 +146,12 @@ const ArticleForm: React.FC<ArticleFormProps> = ({
 
       setUploadProgress('Saving article...');
 
-      await onSubmit(title, content, allAttachments);
+      await onSubmit(title, content, allAttachments, workspaceId);
 
       setTitle('');
       setAttachments([]);
       setPendingFiles([]);
+      setWorkspaceId(workspaceIdProp || '');
       if (quillRef.current) {
         quillRef.current.setText('');
       }
@@ -151,6 +173,31 @@ const ArticleForm: React.FC<ArticleFormProps> = ({
         {uploadProgress && (
           <div className="upload-progress">{uploadProgress}</div>
         )}
+
+        <div className="form-group">
+          <label htmlFor="workspace-select">Workspace *</label>
+          <select
+            id="workspace-select"
+            className="select-control"
+            value={workspaceId}
+            onChange={(e) => setWorkspaceId(e.target.value)}
+            disabled={submitting || workspaces.length === 0}
+          >
+            <option value="" disabled>
+              Select workspace
+            </option>
+            {workspaces.map((workspace) => (
+              <option key={workspace.id} value={workspace.id}>
+                {workspace.name}
+              </option>
+            ))}
+          </select>
+          {workspaces.length === 0 && (
+            <small className="helper-text">
+              Create a workspace before adding articles
+            </small>
+          )}
+        </div>
 
         <div className="form-group">
           <label htmlFor="title">Title *</label>

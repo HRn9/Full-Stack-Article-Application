@@ -3,21 +3,6 @@ const path = require('path');
 const config = require('../config');
 
 /**
- * Check if an article exists by ID
- * @param {string} id - Article ID
- * @returns {Promise<boolean>}
- */
-async function isArticleExists(id) {
-  try {
-    const filePath = path.join(config.DATA_DIR, `${id}.json`);
-    await fs.access(filePath, fs.constants.F_OK);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-/**
  * Delete attachment files from disk
  * @param {Array} attachments - Array of attachment objects
  */
@@ -63,7 +48,6 @@ async function initializeDirectories() {
 }
 
 module.exports = {
-  isArticleExists,
   deleteAttachmentFiles,
   getPreview,
   initializeDirectories,

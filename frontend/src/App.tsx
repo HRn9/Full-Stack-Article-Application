@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import type { Article, AppView, Attachment } from './types';
-import { ArticleApi } from './api';
+import React, { useState, useEffect, useCallback } from 'react';
+import type { Article, AppView, Attachment, Workspace } from './types';
+import { ArticleApi, WorkspaceApi, CommentApi } from './api';
 import './App.css';
 import ArticleForm from './components/ArticleForm';
 import ArticleList from './components/ArticleList';
@@ -16,18 +16,47 @@ const App: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(false);
   const [loadingArticle, setLoadingArticle] = useState<boolean>(false);
   const [error, setError] = useState<string>('');
+  const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
+  const [selectedWorkspaceId, setSelectedWorkspaceId] = useState<string | null>(
+    null
+  );
+  const [workspaceError, setWorkspaceError] = useState<string>('');
+  const [newWorkspaceName, setNewWorkspaceName] = useState<string>('');
+  const [workspaceLoading, setWorkspaceLoading] = useState<boolean>(false);
+  const [workspaceMenuOpen, setWorkspaceMenuOpen] = useState<boolean>(false);
 
   const { notifications, isConnected, removeNotification } = useWebSocket();
 
-  useEffect(() => {
-    fetchArticles();
+  const fetchWorkspaces = useCallback(async (): Promise<void> => {
+    setWorkspaceLoading(true);
+    setWorkspaceError('');
+    try {
+      const data = await WorkspaceApi.listWorkspaces();
+      setWorkspaces(data);
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : 'Could not load workspaces';
+      setWorkspaceError(message);
+    } finally {
+      setWorkspaceLoading(false);
+    }
   }, []);
 
-  const fetchArticles = async (): Promise<void> => {
+  useEffect(() => {
+    fetchWorkspaces();
+  }, [fetchWorkspaces]);
+
+  useEffect(() => {
+    fetchArticles(selectedWorkspaceId || undefined);
+    setSelectedArticle(null);
+    setView('list');
+  }, [selectedWorkspaceId]);
+
+  const fetchArticles = async (workspaceId?: string): Promise<void> => {
     setLoading(true);
     setError('');
     try {
-      const data = await ArticleApi.listArticles();
+      const data = await ArticleApi.listArticles(workspaceId);
       setArticles(data);
     } catch (err) {
       const message =
@@ -57,11 +86,13 @@ const App: React.FC = () => {
   const handleCreateArticle = async (
     title: string,
     content: Delta,
-    attachments: Attachment[]
+    attachments: Attachment[],
+    workspaceId: string
   ): Promise<void> => {
     try {
-      await ArticleApi.createArticle(title, content, attachments);
-      await fetchArticles();
+      await ArticleApi.createArticle(title, content, attachments, workspaceId);
+      await fetchArticles(workspaceId);
+      setSelectedWorkspaceId(workspaceId);
       setView('list');
       setError('');
     } catch (err) {
@@ -75,7 +106,8 @@ const App: React.FC = () => {
   const handleUpdateArticle = async (
     title: string,
     content: Delta,
-    attachments: Attachment[]
+    attachments: Attachment[],
+    workspaceId?: string
   ): Promise<void> => {
     if (!selectedArticle) return;
 
@@ -84,9 +116,16 @@ const App: React.FC = () => {
         selectedArticle.id,
         title,
         content,
-        attachments
+        attachments,
+        workspaceId
       );
-      await fetchArticles();
+      const targetWorkspace = workspaceId || selectedWorkspaceId || null;
+      if (targetWorkspace) {
+        await fetchArticles(targetWorkspace);
+        setSelectedWorkspaceId(targetWorkspace);
+      } else {
+        await fetchArticles();
+      }
       setView('list');
       setSelectedArticle(null);
       setError('');
@@ -103,7 +142,7 @@ const App: React.FC = () => {
 
     try {
       await ArticleApi.deleteArticle(selectedArticle.id);
-      await fetchArticles();
+      await fetchArticles(selectedWorkspaceId || undefined);
       setView('list');
       setSelectedArticle(null);
       setError('');
@@ -117,6 +156,157 @@ const App: React.FC = () => {
   const handleEditArticle = (): void => {
     setView('edit');
     setError('');
+  };
+
+  const handleCreateWorkspace = async (): Promise<void> => {
+    if (!newWorkspaceName.trim()) {
+      setWorkspaceError('Workspace name is required');
+      return;
+    }
+
+    try {
+      const workspace = await WorkspaceApi.createWorkspace(
+        newWorkspaceName.trim()
+      );
+      const updated = [...workspaces, workspace];
+      setWorkspaces(updated);
+      setNewWorkspaceName('');
+      setWorkspaceError('');
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : 'Failed to create workspace';
+      setWorkspaceError(message);
+    }
+  };
+
+  const handleRenameWorkspace = async (): Promise<void> => {
+    if (!selectedWorkspaceId) return;
+    const current = workspaces.find((w) => w.id === selectedWorkspaceId);
+    const nextName = window.prompt(
+      'Enter new workspace name',
+      current?.name || ''
+    );
+    if (!nextName || !nextName.trim()) return;
+
+    try {
+      const updated = await WorkspaceApi.updateWorkspace(
+        selectedWorkspaceId,
+        nextName.trim(),
+        current?.description
+      );
+      setWorkspaces((prev) =>
+        prev.map((w) => (w.id === updated.id ? updated : w))
+      );
+      setWorkspaceError('');
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : 'Failed to rename workspace';
+      setWorkspaceError(message);
+    }
+  };
+
+  const handleDeleteWorkspace = async (): Promise<void> => {
+    if (!selectedWorkspaceId) return;
+    const current = workspaces.find((w) => w.id === selectedWorkspaceId);
+    if (
+      !window.confirm(
+        `Delete workspace "${current?.name || 'current'}"? Articles and comments inside will be removed.`
+      )
+    ) {
+      return;
+    }
+
+    try {
+      await WorkspaceApi.deleteWorkspace(selectedWorkspaceId);
+      const remaining = workspaces.filter((w) => w.id !== selectedWorkspaceId);
+      setWorkspaces(remaining);
+      const nextSelected = remaining.length ? remaining[0].id : null;
+      setSelectedWorkspaceId(nextSelected);
+      setArticles([]);
+      setSelectedArticle(null);
+      setView('list');
+      setWorkspaceError('');
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : 'Failed to delete workspace';
+      setWorkspaceError(message);
+    }
+  };
+
+  const handleAddComment = async (
+    articleId: string,
+    body: string,
+    author?: string
+  ): Promise<void> => {
+    try {
+      const comment = await CommentApi.createComment(articleId, body, author);
+      setSelectedArticle((prev) =>
+        prev
+          ? {
+              ...prev,
+              comments: [comment, ...(prev.comments || [])],
+            }
+          : prev
+      );
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : 'Failed to add comment';
+      setError(message);
+    }
+  };
+
+  const handleUpdateComment = async (
+    articleId: string,
+    commentId: string,
+    body: string,
+    author?: string
+  ): Promise<void> => {
+    try {
+      const updated = await CommentApi.updateComment(
+        articleId,
+        commentId,
+        body,
+        author
+      );
+
+      setSelectedArticle((prev) =>
+        prev
+          ? {
+              ...prev,
+              comments: (prev.comments || []).map((comment) =>
+                comment.id === updated.id ? updated : comment
+              ),
+            }
+          : prev
+      );
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : 'Failed to update comment';
+      setError(message);
+    }
+  };
+
+  const handleDeleteComment = async (
+    articleId: string,
+    commentId: string
+  ): Promise<void> => {
+    try {
+      await CommentApi.deleteComment(articleId, commentId);
+      setSelectedArticle((prev) =>
+        prev
+          ? {
+              ...prev,
+              comments: (prev.comments || []).filter(
+                (comment) => comment.id !== commentId
+              ),
+            }
+          : prev
+      );
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : 'Failed to delete comment';
+      setError(message);
+    }
   };
 
   return (
@@ -144,10 +334,91 @@ const App: React.FC = () => {
             <button
               className={`nav-btn ${view === 'create' ? 'active' : ''}`}
               onClick={() => setView('create')}
+              disabled={workspaces.length === 0}
             >
               Create New
             </button>
           </nav>
+          <div className="workspace-menu-wrapper">
+            {workspaces.length > 0 && (
+              <span className="workspace-current" title="Current workspace">
+                <span className="workspace-dot">●</span>
+                {selectedWorkspaceId
+                  ? workspaces.find((w) => w.id === selectedWorkspaceId)?.name ||
+                    'Workspace'
+                  : 'All workspaces'}
+              </span>
+            )}
+            <button
+              className="workspace-toggle"
+              aria-label="Manage workspaces"
+              onClick={() => setWorkspaceMenuOpen((prev) => !prev)}
+              title="Manage workspaces"
+            >
+              ⚙️
+            </button>
+            {workspaceMenuOpen && (
+              <div className="workspace-panel">
+                <div className="workspace-row">
+                  <label htmlFor="workspace-select">Workspace</label>
+                  <select
+                    id="workspace-select"
+                    value={selectedWorkspaceId ?? ''}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setSelectedWorkspaceId(value === '' ? null : value);
+                    }}
+                    disabled={workspaceLoading || workspaces.length === 0}
+                  >
+                    <option value="">All workspaces</option>
+                    {workspaces.map((workspace) => (
+                      <option key={workspace.id} value={workspace.id}>
+                        {workspace.name}
+                      </option>
+                    ))}
+                    {workspaces.length === 0 && (
+                      <option value="" disabled>
+                        No workspaces yet
+                      </option>
+                    )}
+                  </select>
+                </div>
+                <div className="workspace-row">
+                  <button
+                    className="btn-secondary"
+                    onClick={handleRenameWorkspace}
+                    disabled={!selectedWorkspaceId}
+                  >
+                    Rename
+                  </button>
+                  <button
+                    className="btn-danger"
+                    onClick={handleDeleteWorkspace}
+                    disabled={!selectedWorkspaceId}
+                  >
+                    Delete
+                  </button>
+                </div>
+                <div className="workspace-row">
+                  <input
+                    type="text"
+                    value={newWorkspaceName}
+                    onChange={(e) => setNewWorkspaceName(e.target.value)}
+                    placeholder="New workspace name"
+                  />
+                  <button
+                    className="btn-primary"
+                    onClick={handleCreateWorkspace}
+                  >
+                    + Add
+                  </button>
+                </div>
+                {workspaceError && (
+                  <div className="error-banner">{workspaceError}</div>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       </header>
 
@@ -159,7 +430,7 @@ const App: React.FC = () => {
             articles={articles}
             loading={loading}
             onSelectArticle={handleSelectArticle}
-            onRefresh={fetchArticles}
+            onRefresh={() => fetchArticles(selectedWorkspaceId || undefined)}
           />
         )}
 
@@ -172,6 +443,9 @@ const App: React.FC = () => {
               onBack={() => setView('list')}
               onEdit={handleEditArticle}
               onDelete={handleDeleteArticle}
+              onAddComment={handleAddComment}
+              onUpdateComment={handleUpdateComment}
+              onDeleteComment={handleDeleteComment}
             />
           ) : null)}
 
@@ -179,6 +453,8 @@ const App: React.FC = () => {
           <ArticleForm
             onSubmit={handleCreateArticle}
             onCancel={() => setView('list')}
+            workspaces={workspaces}
+            workspaceId={selectedWorkspaceId || undefined}
           />
         )}
 
@@ -190,6 +466,8 @@ const App: React.FC = () => {
               setView('view');
               setError('');
             }}
+            workspaces={workspaces}
+            workspaceId={selectedWorkspaceId || undefined}
           />
         )}
       </main>

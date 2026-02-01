@@ -9,7 +9,9 @@ A simple full-stack application for managing articles with a React frontend and 
 - **Database**: PostgreSQL with Sequelize ORM
 - **WYSIWYG Editor**: Quill editor for rich text editing
 - **Article Management**: Create, view, edit, and delete articles
-- **File Attachments**: Upload and attach images (JPG, PNG, GIF, WEBP) and PDFs to articles
+- **Workspaces**: Group articles by workspace; switch or view across all
+- **Comments**: Add/update/delete comments on articles
+- **File Attachments**: Upload and attach images (JPG, PNG, GIF, WEBP) and PDFs to articles (files stored on disk, metadata in DB)
 - **Real-Time Notifications**: WebSocket support for instant notifications on article changes
 - **Data Persistence**: Database storage with file system support for attachments
 
@@ -26,8 +28,7 @@ fullstack-atricle-app/
 │   │   ├── websocket/        # WebSocket manager
 │   │   ├── app.js            # Express app setup
 │   │   └── server.js         # Server entry point
-│   ├── data/                 # JSON article files
-│   └── attachments/          # Uploaded files
+│   └── attachments/          # Uploaded files (stored on disk)
 ├── frontend/            # React application
 │   └── src/
 │       ├── components/  # React components
@@ -113,8 +114,8 @@ The frontend will be available at `http://localhost:5173` (or another port if 51
 
 ## API Endpoints
 
-### `GET /api/articles`
-Returns a list of all articles with preview and attachment count.
+### `GET /api/articles?workspaceId=:workspaceId`
+Returns a list of articles with preview, attachment/comment counts. If `workspaceId` is omitted or empty, returns articles from all workspaces.
 
 **Response:**
 ```json
@@ -123,13 +124,15 @@ Returns a list of all articles with preview and attachment count.
     "id": "article-id",
     "title": "Article Title",
     "preview": "Article preview text...",
-    "attachmentCount": 2
+    "attachmentCount": 2,
+    "commentCount": 3,
+    "workspaceId": "workspace-id"
   }
 ]
 ```
 
 ### `GET /api/articles/:id`
-Returns a specific article by ID with attachments.
+Returns a specific article by ID with attachments, comments, and workspace info.
 
 **Response:**
 ```json
@@ -145,18 +148,32 @@ Returns a specific article by ID with attachments.
       "size": 12345,
       "url": "/attachments/unique-filename.jpg"
     }
-  ]
+  ],
+  "comments": [
+    {
+      "id": "comment-id",
+      "author": "Anonymous",
+      "body": "Great post!",
+      "createdAt": "...",
+      "updatedAt": "..."
+    }
+  ],
+  "workspace": {
+    "id": "workspace-id",
+    "name": "Workspace name"
+  }
 }
 ```
 
 ### `POST /api/articles`
-Creates a new article with optional attachments.
+Creates a new article in a workspace with optional attachments.
 
 **Request Body:**
 ```json
 {
   "title": "Article Title",
   "content": { ... },
+  "workspaceId": "workspace-id",
   "attachments": [...]
 }
 ```
@@ -165,6 +182,7 @@ Creates a new article with optional attachments.
 - `title`: Required, non-empty string, max 200 characters
 - `content`: Required, Quill Delta object
 - `attachments`: Optional array of attachment objects
+- `workspaceId`: Required; must reference an existing workspace
 
 ### `PUT /api/articles/:id`
 Updates an existing article.
@@ -174,12 +192,48 @@ Updates an existing article.
 {
   "title": "Updated Title",
   "content": { ... },
+  "workspaceId": "workspace-id", // optional change workspace
   "attachments": [...]
 }
 ```
 
 ### `DELETE /api/articles/:id`
 Deletes an article and its attachments.
+
+### `GET /api/articles/:id/comments`
+List comments for an article (newest first).
+
+### `POST /api/articles/:id/comments`
+Add a comment to an article.
+
+**Request Body:**
+```json
+{ "body": "Nice article!", "author": "Alice" }
+```
+
+### `PUT /api/articles/:id/comments/:commentId`
+Update a comment’s text/author.
+
+### `DELETE /api/articles/:id/comments/:commentId`
+Delete a comment.
+
+### `GET /api/workspaces`
+List all workspaces with article counts.
+
+### `POST /api/workspaces`
+Create workspace.
+
+**Request Body:**
+```json
+{ "name": "Workspace name", "description": "Optional" }
+```
+- Returns `409 Conflict` if the name already exists.
+
+### `PUT /api/workspaces/:id`
+Rename/update description (409 on duplicate name).
+
+### `DELETE /api/workspaces/:id`
+Delete workspace and all its articles/attachments/comments.
 
 ### `POST /api/upload`
 Uploads a file attachment.
@@ -212,6 +266,8 @@ Connect to `ws://localhost:5001` to receive real-time notifications.
   "type": "article_created|article_updated|article_deleted|file_uploaded",
   "articleId": "article-id",
   "title": "Article Title",
+  "workspaceId": "workspace-id",
+  "workspaceName": "Workspace name",
   "message": "Human-readable message",
   "timestamp": "ISO-8601 timestamp"
 }

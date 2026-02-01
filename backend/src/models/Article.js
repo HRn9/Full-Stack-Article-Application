@@ -3,10 +3,21 @@ const { Model } = require('sequelize');
 module.exports = (sequelize, DataTypes) => {
   class Article extends Model {
     static associate(models) {
-      // Define associations here
       Article.hasMany(models.Attachment, {
         foreignKey: 'articleId',
         as: 'attachments',
+        onDelete: 'CASCADE',
+      });
+
+      Article.belongsTo(models.Workspace, {
+        foreignKey: 'workspaceId',
+        as: 'workspace',
+        onDelete: 'CASCADE',
+      });
+
+      Article.hasMany(models.Comment, {
+        foreignKey: 'articleId',
+        as: 'comments',
         onDelete: 'CASCADE',
       });
     }
@@ -37,6 +48,16 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.JSONB,
         allowNull: false,
         comment: 'Quill Delta format content',
+      },
+      workspaceId: {
+        type: DataTypes.UUID,
+        allowNull: false,
+        references: {
+          model: 'workspaces',
+          key: 'id',
+        },
+        onDelete: 'CASCADE',
+        onUpdate: 'CASCADE',
       },
       createdAt: {
         type: DataTypes.DATE,

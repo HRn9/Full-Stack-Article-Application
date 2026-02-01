@@ -67,6 +67,89 @@
     border-color: #007bff;
 }
 
+.workspace-menu-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.workspace-toggle {
+    background: transparent;
+    border: 1px solid #e0e0e0;
+    color: #555;
+    border-radius: 10px;
+    padding: 6px 10px;
+    cursor: pointer;
+    transition: background 0.2s, border-color 0.2s, color 0.2s;
+}
+
+.workspace-current {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: linear-gradient(90deg, #f1f5ff, #e7edff);
+    color: #1f3f94;
+    padding: 6px 10px;
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: 600;
+    max-width: 220px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.workspace-dot {
+    font-size: 10px;
+}
+
+.workspace-toggle:hover {
+    background: #f5f7fb;
+    border-color: #cdd6f3;
+    color: #2c4a9a;
+}
+
+.workspace-panel {
+    position: absolute;
+    top: 120%;
+    right: 0;
+    width: 320px;
+    padding: 12px;
+    background: #fff;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.12);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    z-index: 10;
+}
+
+.workspace-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.workspace-row input,
+.workspace-row select {
+    padding: 8px 10px;
+    border-radius: 6px;
+    border: 1px solid #ccc;
+    flex: 1;
+}
+
+.workspace-badge {
+    display: inline-block;
+    background: #f1f5ff;
+    color: #2c4a9a;
+    padding: 6px 10px;
+    border-radius: 6px;
+    font-size: 13px;
+    margin-bottom: 10px;
+}
+
 .app-main {
     padding: 24px;
     flex: 1;
@@ -240,11 +323,100 @@ button {
     color: #777;
     margin-bottom: 20px;
     font-size: 14px;
+    display: flex;
+    gap: 10px;
 }
 
 .article-body {
     border-top: 1px solid #eee;
     padding-top: 16px;
+}
+
+.comments-section {
+    margin-top: 24px;
+    border-top: 1px solid #eee;
+    padding-top: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.comment-form {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.comment-form textarea {
+    padding: 10px;
+    border-radius: 6px;
+    border: 1px solid #ccc;
+    font-size: 14px;
+    resize: vertical;
+}
+
+.comment-form input {
+    padding: 10px;
+    border-radius: 6px;
+    border: 1px solid #ccc;
+    font-size: 14px;
+}
+
+.comments-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.comment-item {
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 12px;
+    background: #fafafa;
+    position: relative;
+}
+
+.comment-meta {
+    font-size: 13px;
+    color: #555;
+    margin-right: 60px;
+}
+
+.comment-actions {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    display: flex;
+    gap: 6px;
+}
+
+.comment-action-btn {
+    background: none;
+    border: none;
+    font-size: 16px;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 6px;
+    transition: background 0.2s;
+}
+
+.comment-action-btn:hover {
+    background: #e9ecef;
+}
+
+.comment-body {
+    margin: 8px 0;
+    color: #333;
+}
+
+.comment-footer {
+    display: flex;
+    justify-content: flex-end;
+}
+
+.comment-date {
+    color: #888;
+    font-size: 12px;
 }
 
 /* === Article Form === */
@@ -273,6 +445,19 @@ button {
     border-radius: 6px;
     border: 1px solid #ccc;
     font-size: 15px;
+}
+
+.select-control {
+    padding: 10px;
+    border-radius: 6px;
+    border: 1px solid #ccc;
+    font-size: 15px;
+    background: #fff;
+}
+
+.select-control:focus {
+    border-color: #007bff;
+    outline: none;
 }
 
 .article-form input:focus {
@@ -582,5 +767,14 @@ button {
 
     .attachment-upload {
         align-items: flex-start;
+    }
+
+    .workspace-panel {
+        width: 100%;
+    }
+
+    .workspace-row {
+        flex-direction: column;
+        align-items: stretch;
     }
 }

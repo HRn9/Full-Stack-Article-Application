@@ -15,6 +15,10 @@ export interface Article {
   preview?: string;
   attachments?: Attachment[];
   attachmentCount?: number;
+  commentCount?: number;
+  workspaceId: string;
+  workspace?: Workspace;
+  comments?: Comment[];
 }
 
 export interface ApiError {
@@ -33,4 +37,24 @@ export interface Notification {
   filename?: string;
   message: string;
   timestamp: string;
+  workspaceId?: string;
+  workspaceName?: string;
+}
+
+export interface Workspace {
+  id: string;
+  name: string;
+  description?: string | null;
+  articleCount?: number;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface Comment {
+  id: string;
+  articleId: string;
+  author?: string | null;
+  body: string;
+  createdAt: string;
+  updatedAt: string;
 }
